@@ -1,0 +1,39 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <title>Spotter stream</title>
+        <link rel="icon" type="image/x-icon" sizes="16x16 32x32" href="favicon.ico">
+        <link rel="stylesheet" href="styles.css">
+        <script src="script.js"></script>
+    </head>
+    <body>
+        <div class="page">
+            <div class="main">
+                <div class="container">
+                    <img src="stream.jpg" width="100%"/>
+                    <div class="overlay frame" id="picker"></div>
+                    <div class="overlay frame" id="mirror"></div>
+                </div>
+            </div>
+            <div class="side">
+                <h2>Settings</h2>
+                <div class="paramlist">
+                    <div>
+                        Contrast: <input type="number" name="contrast" min="-100" max="100" step="1" onchange="enterParam(this)">
+                    </div>
+                    <div>
+                        Sensitivity: <input type="number" name="threshold" min="0" max="255" step="1" onchange="enterParam(this)">
+                    </div>
+                    <div>
+                        Average: <input type="number" name="average" min="1" max="30" step="1" onchange="enterParam(this)">
+                    </div>
+                    <div>
+                        <input type="button" name="mode" onclick="toggleMode(this)">
+                    </div>
+                </div>
+                <h2>Status</h2>
+                <div class="paramlist" id="infos"></div>
+            </div>
+        </div>
+    </body>
+</html>
