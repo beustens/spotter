@@ -1,5 +1,9 @@
 import io # for temporary buffer to simulate file for image conversion
-from picamera.array import PiYUVAnalysis # to stream frames to numpy arrays
+import emulation
+if emulation.emulated:
+    from emulation import PiYUVAnalysis
+else:
+    from picamera.array import PiYUVAnalysis # to stream frames to numpy arrays
 import numpy as np # for array math
 from scipy import ndimage # for image processing
 from PIL import Image # to convert array to image
