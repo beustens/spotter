@@ -180,9 +180,11 @@ if __name__ == '__main__':
             try:
                 log.debug('Starting HTTP server')
                 server = StreamingServer(('', 8000), StreamingHandler)
-                log.info(f'Started web server on http://{server.server_name}:{server.server_port}')
+                log.info(f'Started user interface on http://{server.server_name}:{server.server_port}')
+                log.info('Press ctrl-C to stop')
                 server.serve_forever()
             except KeyboardInterrupt:
-                log.info('Stopped web server')
+                pass
             finally:
                 camera.stop_recording()
+                log.debug('Stopped camera recording')
