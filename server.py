@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from picamera import PiCamera # to access the camera
-from imgproc import FrameAnalysis, Mode # for camera frame processing
+from .imgproc import FrameAnalysis, Mode # for camera frame processing
 import logging # for more advanced prints
 import socketserver # to make a server
 from http import server # to handle http requests
