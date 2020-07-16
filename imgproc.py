@@ -28,6 +28,7 @@ class FrameAnalysis(PiYUVAnalysis):
     def __init__(self, *args, **kwargs):
         super(FrameAnalysis, self).__init__(*args, **kwargs)
         # general
+        self.frameCnt = 0
         self.streamImage = bytes()
         self.procTime = 0.
         self.mode = Mode.PREVIEW # do not average and detect changes yet
@@ -47,7 +48,7 @@ class FrameAnalysis(PiYUVAnalysis):
         self.maxHoleSize = 20 # maximum expected hole size in width or height pixels
         
         # marks related
-        self.nMarks = 50 # maximum number marks to keep in history
+        self.maxMarks = 50 # maximum number marks to keep in history
 
         self.reset()
     
@@ -69,6 +70,7 @@ class FrameAnalysis(PiYUVAnalysis):
         Event fired for each new image coming from camera recording
         '''
         startTime = time.perf_counter()
+        self.frameCnt += 1
 
         # convert camera image to grayscale frame matrix
         frame = img[:, :, 0] # get luminance channel of YUV
@@ -182,7 +184,7 @@ class FrameAnalysis(PiYUVAnalysis):
         Pushes new mark middle position into buffer
         '''
         self.marks.insert(0, analysis.rect.center)
-        if len(self.marks) > self.nMarks:
+        if len(self.marks) > self.maxMarks:
             self.marks.pop(-1)
     
 
