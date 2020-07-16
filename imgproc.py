@@ -100,9 +100,6 @@ class FrameAnalysis(PiYUVAnalysis):
                 # add current slot to slots
                 log.debug('Cycling slot')
                 if self.cycleSlots(self.slot):
-                    # prepare display-frame for stream
-                    display = np.copy(self.slots[0].mean)
-
                     # analyse for differences between newest and oldest slot
                     log.debug('Comparing newest to oldest slot')
                     self.analysis = Analysis(self.slots[0], self.slots[-1], self.thresh, self.maxHoleSize)
@@ -111,12 +108,9 @@ class FrameAnalysis(PiYUVAnalysis):
                         # add mark of detection
                         log.debug('Adding change detection mark')
                         self.cycleMarks(self.analysis)
-
-                        # for debug: draw mask in full bright
-                        display[self.analysis.mask] = 255
                     
                     # TODO: parallel to above processing, convert frame to image
-                    self.streamImage = self.frameToImage(display)
+                    self.streamImage = self.frameToImage(self.slots[0].mean)
         
         self.procTime = time.perf_counter()-startTime
     
