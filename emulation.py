@@ -105,7 +105,7 @@ class PiCamera:
         img += noise
 
         # apply contrast
-        img *= self.normContrast
+        img = (img-0.5)*self.normContrast+0.5
 
         # convert to image tensor
         img *= 255 # denormalize
