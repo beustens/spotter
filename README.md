@@ -7,4 +7,4 @@ Marking small changes on a static target using the Raspberry Pi camera
     - [scipy](https://pypi.org/project/scipy/)
     - [Pillow](https://pypi.org/project/Pillow/)
     - (should be already installed on a Raspberry Pi) [picamera](https://picamera.readthedocs.io)
-- In the project directory, run `python3 server.py`. This startes a web-based GUI on a local webserver, which can be accessed with the browser.
+- In the project directory, run `python3 server.py`. This startes a web-based GUI on a local webserver, which can be accessed with the browser. When running with `python3 server.py -e`, the emulation mode is activated, i.e. no picamera package is needed and the camera frames are artificially generated.
