@@ -15,9 +15,14 @@ import time # for waiting
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(f'spotter_{__name__}')
 
+updateSettings = {}
+
 
 class StreamingHandler(server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
+        self.oldStreamImage = None
+        self.oldMode = None
+        self.oldFrameCnt = None
         super().__init__(*args, directory='html', **kwargs)
     
 
@@ -58,44 +63,70 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
             try:
                 while True:
                     # update stream image
-                    if spotter.streamImage:
+                    if self.oldStreamImage != spotter.streamImage:
                         self.wfile.write(b'--FRAME\n')
                         self.send_header('Content-Type', 'image/jpeg')
                         self.send_header('Content-Length', len(spotter.streamImage))
                         self.end_headers()
                         self.wfile.write(spotter.streamImage)
                         self.wfile.write(b'\n\n')
-                        spotter.streamImage = bytes()
+                        self.oldStreamImage = spotter.streamImage
                     
                     time.sleep(0.01) # reduce idle load
             except BrokenPipeError:
                 log.info(f'Removed streaming client {self.client_address}')
         elif '/settings' in self.path:
-            # client requests settings
-            data = {
-                'contrast': camera.contrast, 
-                'threshold': spotter.thresh, 
-                'average': spotter.nSlotFrames, 
-                'mode': 'Start' if spotter.mode == Mode.PREVIEW else 'Stop'
-            }
-            self.sendDict(data)
+            # push settings into clients input fields
+            self.sendEventStreamHeader()
+            try:
+                while True:
+                    ip = self.client_address[0]
+                    # init update state for each client
+                    if ip not in updateSettings:
+                        updateSettings[ip] = True
+                    # pack settings
+                    if updateSettings[ip]:
+                        data = {
+                            'contrast': camera.contrast, 
+                            'threshold': spotter.thresh, 
+                            'average': spotter.nSlotFrames, 
+                            'mode': 'Start' if spotter.mode == Mode.PREVIEW else 'Stop'
+                        }
+                        # send data
+                        self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
+                        updateSettings[ip] = False
+
+                    time.sleep(0.1) # reduce idle load
+            except BrokenPipeError:
+                log.info(f'Removed streaming client {self.client_address}')
         elif '/infos' in self.path:
             # send event after processed frame from camera
             self.sendEventStreamHeader()
             try:
                 while True:
-                    if spotter.procTime:
+                    if self.oldFrameCnt != spotter.frameCnt:
                         # get debug infos
-                        debug = {
+                        data = {
                             'Processing time': f'{(spotter.procTime*1e3):.2f} ms', 
                             'Exposure time': f'{(camera.exposure_speed/1e3):.2f} ms', 
                             'Frames in slot': f'{spotter.slot.length}/{spotter.nSlotFrames}', 
                             'Last analysis': '--' if spotter.analysis is None else ('No valid change detected' if   not spotter.analysis.valid else f'Changes detected in {spotter.analysis.rect}')
                         }
-
-                        # pack data
-                        data = {'debug': debug}
-
+                        # send data
+                        self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
+                        self.oldFrameCnt = spotter.frameCnt
+                    
+                    time.sleep(0.01) # reduce idle load
+            except BrokenPipeError:
+                log.info(f'Removed streaming client {self.client_address}')
+        elif '/state' in self.path:
+            # mode change
+            self.sendEventStreamHeader()
+            try:
+                while True:
+                    if self.oldMode != spotter.mode:
+                        data = {}
+                        
                         # put in mirror picker size
                         if spotter.mode == Mode.PREVIEW:
                             picker = {
@@ -116,9 +147,9 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
 
                         # send data
                         self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
-                        spotter.procTime = 0.
+                        self.oldMode = spotter.mode
                     
-                    time.sleep(0.01) # reduce idle load
+                    time.sleep(0.1) # reduce idle load
             except BrokenPipeError:
                 log.info(f'Removed streaming client {self.client_address}')
         else:
@@ -155,6 +186,10 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                     'preview': Mode.PREVIEW
                 }
                 spotter.mode = modes.get(value, Mode.PREVIEW)
+            
+            # update settings for all clients
+            for k in updateSettings:
+                updateSettings[k] = True
 
         # respond
         self.send_response(200)

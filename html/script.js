@@ -21,7 +21,7 @@ infoSource.onmessage = function(event) {
     // display debug infos
     const infosEle = document.getElementById("infos");
     infosEle.innerHTML = "";
-    for (const [key, val] of Object.entries(data.debug)) {
+    for (const [key, val] of Object.entries(data)) {
         // create info element
         const infoEle = document.createElement("div");
         // add key
@@ -34,6 +34,11 @@ infoSource.onmessage = function(event) {
         // add info element to infos element
         infosEle.appendChild(infoEle);
     }
+};
+
+const stateSource = new EventSource("/state");
+stateSource.onmessage = function(event) {
+    const data = JSON.parse(event.data); // parse dictionary
 
     // configure mirror picker overlay
     const picker = document.getElementById("picker");
@@ -64,22 +69,16 @@ infoSource.onmessage = function(event) {
     }
 };
 
-
-function initSettings() {
-    // get all parameter values from server
-    fetch("/settings")
-        .then(response => response.json())
-        .then(data => {
-            // insert them in inputs
-            for (const element of document.getElementsByTagName("input")) {
-                if (element.name in data) {
-                    element.value = data[element.name];
-                }
-            }
-        });
+const settingsSource = new EventSource("/settings");
+settingsSource.onmessage = function(event) {
+    const data = JSON.parse(event.data); // parse dictionary
+    // insert parameters in inputs
+    for (const element of document.getElementsByTagName("input")) {
+        if (element.name in data) {
+            element.value = data[element.name];
+        }
+    }
 }
-
-initSettings()
 
 
 function toggleMode(btnElement) {
