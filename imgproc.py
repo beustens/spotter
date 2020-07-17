@@ -23,7 +23,7 @@ class Mode(Enum):
 
 class FrameAnalysis(PiYUVAnalysis):
 
-    NSLOTS = 3
+    MAX_SLOTS = 3
 
     def __init__(self, *args, **kwargs):
         super(FrameAnalysis, self).__init__(*args, **kwargs)
@@ -172,7 +172,7 @@ class FrameAnalysis(PiYUVAnalysis):
         '''
         self.slots.insert(0, slot) # store current slot
         self.slot = Slot() # reset current slot
-        if len(self.slots) > self.NSLOTS:
+        if len(self.slots) > self.MAX_SLOTS:
             self.slots.pop(-1) # delete oldest slot
             return True
         else:
