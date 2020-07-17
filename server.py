@@ -23,6 +23,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
         self.oldStreamImage = None
         self.oldMode = None
         self.oldFrameCnt = None
+        self.oldMarks = None
         super().__init__(*args, directory='html', **kwargs)
     
 
@@ -148,6 +149,28 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                         # send data
                         self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
                         self.oldMode = spotter.mode
+                    
+                    time.sleep(0.1) # reduce idle load
+            except BrokenPipeError:
+                log.info(f'Removed streaming client {self.client_address}')
+        elif '/marks' in self.path:
+            # marks change
+            self.sendEventStreamHeader()
+            try:
+                while True:
+                    if self.oldMarks != spotter.marks:
+                        data = []
+                        # collect percentage coordinates of marks
+                        for mark in spotter.marks:
+                            x, y = mark
+                            coords = {
+                                'left': 100*x/spotter.paperBounds.width, 
+                                'top': 100*y/spotter.paperBounds.height
+                            }
+                            data.append(coords)
+                        # send data
+                        self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
+                        self.oldMarks = spotter.marks
                     
                     time.sleep(0.1) # reduce idle load
             except BrokenPipeError:
