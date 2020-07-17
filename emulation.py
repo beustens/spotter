@@ -19,8 +19,15 @@ class PiCamera:
         self.fakeFPS = 15
         self.exposure_speed = 1e6/self.fakeFPS
         self.mirrorRatio = 0.1 # radius as ratio to image width
+        self.paperSize = 3*self.mirrorRatio
         self.thread = None
         self.stopper = threading.Event()
+        self.holeRatio = 0.005 # radius as ratio to image with
+        self.holePeriod = 3. # generate every x seconds a new hole
+        self.holeTime = time.time()+10. # start hole generation in y seconds
+        self.makeCoords()
+        self.baseImage = self.generateBaseImage()
+        np.random.seed(0)
     
 
     def __enter__(self):
@@ -74,26 +81,59 @@ class PiCamera:
         self.stopper.set()
     
 
-    def generateImage(self):
+    def makeCoords(self):
         '''
-        :returns: fake image of paper and mirror
+        Generates relative image coordinates over width 
+        with origin in center and square pixel ratio
         '''
         # coordinates
         x = np.linspace(-1., 1., self.width)
         ratio = self.height/self.width
         y = np.linspace(-ratio, ratio, self.height)
         # grid
-        x, y = np.meshgrid(x, y)
-        d = np.sqrt(x**2+y**2)
-        # masks
-        size = 3*self.mirrorRatio
-        paper = np.logical_and(np.abs(y) < size, np.abs(x) < size)
-        mirror = d <= self.mirrorRatio
+        self.relX, self.relY = np.meshgrid(x, y)
+    
 
+    def generateBaseImage(self):
+        '''
+        :returns: normed grayscale image matrix for the static content
+        '''
+        dist = np.sqrt(self.relX**2+self.relY**2)
+        # masks
+        paperMask = np.logical_and(np.abs(self.relY) < self.paperSize, np.abs(self.relX) < self.paperSize)
+        mirrorMask = dist <= self.mirrorRatio
         # generate normalized grayscale frame
-        img = 0.4-0.4*d**2 # background with vignette
-        img[paper] = 0.8
-        img[mirror] = 0.2
+        img = 0.4-0.4*dist**2 # background with vignette
+        img[paperMask] = 0.8
+        img[mirrorMask] = 0.2
+        return img
+    
+
+    def makeHole(self, img):
+        '''
+        Makes a random hole on the image
+
+        :param img: normed grayscale image matrix
+        '''
+        # generate random coordinates for hole on paper
+        rndX, rndY = np.random.normal(0., self.paperSize/2.5, (2,))
+        dist = np.sqrt((self.relX+rndX)**2+(self.relY+rndY)**2)
+        # mask
+        holeMask = dist <= self.holeRatio
+        # draw hole on image
+        img[holeMask] = 0.1
+    
+
+    def generateImage(self):
+        '''
+        :returns: fake image of paper and mirror
+        '''
+        img = self.baseImage
+        # make hole
+        now = time.time()
+        if now >= self.holeTime:
+            self.holeTime = now+self.holePeriod
+            self.makeHole(img)
         # low pass filter a bit
         img = ndimage.gaussian_filter(img, 3)
         # add rough noise
