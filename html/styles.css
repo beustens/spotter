@@ -80,6 +80,16 @@ input[type="button"]:hover {
     border-radius: 50%;
 }
 
+.mark {
+    width: 1em;
+    height: 1em;
+    transform: translate(-50%, -50%);
+}
+
+.mark:nth-child(1) {
+    border-color: #ffd000;
+}
+
 #picker {
     top: 50%;
     left: 50%;

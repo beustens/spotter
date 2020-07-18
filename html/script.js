@@ -36,14 +36,14 @@ infoSource.onmessage = function(event) {
     }
 };
 
-const stateSource = new EventSource("/mode");
+const stateSource = new EventSource("/state");
 stateSource.onmessage = function(event) {
     const data = JSON.parse(event.data); // parse dictionary
 
     // configure mirror picker overlay
     const picker = document.getElementById("picker");
     if ("pickersize" in data) {
-        // in preview mode, display picker and set size
+        // in preview state, display picker and set size
         const size = data.pickersize;
         picker.style.width = size.width+"%";
         picker.style.height = size.height+"%";
@@ -77,6 +77,26 @@ settingsSource.onmessage = function(event) {
         if (element.name in data) {
             element.value = data[element.name];
         }
+    }
+}
+
+const marksSource = new EventSource("/marks");
+marksSource.onmessage = function(event) {
+    const data = JSON.parse(event.data); // parse dictionary
+    
+    const marksEle = document.getElementById("marks");
+    marksEle.innerHTML = "";
+    // insert marks in container
+    for (const mark of data) {
+        // create mark element
+        const markEle = document.createElement("div");
+        markEle.classList.add("overlay");
+        markEle.classList.add("circle");
+        markEle.classList.add("mark");
+        markEle.style.top = mark.top+"%";
+        markEle.style.left = mark.left+"%";
+        // add mark to container
+        marksEle.appendChild(markEle);
     }
 }
 

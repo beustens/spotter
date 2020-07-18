@@ -91,7 +91,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                             'contrast': camera.contrast, 
                             'threshold': spotter.thresh, 
                             'average': spotter.nSlotFrames, 
-                            'state': spotter.state
+                            'mode': 'Start' if spotter.state == State.PREVIEW else 'Stop'
                         }
                         # send data
                         self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
@@ -158,7 +158,8 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
             self.sendEventStreamHeader()
             try:
                 while True:
-                    if self.oldMarks != spotter.marks:
+                    marksHash = hash(tuple(spotter.marks)) # to detect changed mark list
+                    if self.oldMarks != marksHash:
                         data = []
                         # collect percentage coordinates of marks
                         for mark in spotter.marks:
@@ -169,9 +170,8 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                             }
                             data.append(coords)
                         # send data
-                        log.info(f'Sending marks: {data}')
                         self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
-                        self.oldMarks = spotter.marks
+                        self.oldMarks = marksHash
                     
                     time.sleep(0.1) # reduce idle load
             except BrokenPipeError:
