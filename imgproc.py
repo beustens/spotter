@@ -15,10 +15,11 @@ import logging # for more advanced prints
 log = logging.getLogger(f'spotter_{__name__}')
 
 
-class Mode(Enum):
+class State(Enum):
     PREVIEW = 0
     START = 1
-    DETECT = 2
+    COLLECT = 2
+    DETECT = 3
 
 
 class FrameAnalysis(PiYUVAnalysis):
@@ -31,7 +32,7 @@ class FrameAnalysis(PiYUVAnalysis):
         self.frameCnt = 0
         self.streamImage = bytes()
         self.procTime = 0.
-        self.mode = Mode.PREVIEW # do not average and detect changes yet
+        self.state = State.PREVIEW # do not average and detect changes yet
 
         # mirror detection related
         self.mirrorTolerance = 15 # tolerance to find mirror pixels from center luminance
@@ -76,25 +77,24 @@ class FrameAnalysis(PiYUVAnalysis):
         frame = img[:, :, 0] # get luminance channel of YUV
         frame = frame.astype(np.int16)
 
-        if self.mode == Mode.PREVIEW:
-            # in preview mode, reset analysis results and output uncropped frame
+        if self.state == State.PREVIEW:
+            # in preview state, reset analysis results and output uncropped frame
             self.reset()
             self.streamImage = self.frameToImage(frame)
-        elif self.mode == Mode.START:
+        elif self.state == State.START:
             # auto-crop and detect mirror
-            log.info('Switching to START mode')
+            log.info('Switching to START sate')
             # find mirror (black circle on paper)
             self.mirrorBounds = self.findMirror(frame)
             log.debug(f'Mirror bounds in image: {self.mirrorBounds}')
             # get paper crop and re-calculate mirror bounds within cropped area
             self.paperBounds = self.mirrorBounds.scaled(self.paperScale)
             self.mirrorBounds = self.mirrorBounds.relativeTo(self.paperBounds)
-            log.info('Switching to DETECT mode')
-            self.mode = Mode.DETECT
-        elif self.mode == Mode.DETECT:
-            # processing mode
+            log.info('Switching to COLLECT sate')
+            self.state = State.COLLECT
+        else:
+            # filling slots with frames
             frame = self.crop(frame, self.paperBounds) # crop
-            
             # add frame to current slot
             log.debug(f'Adding frame {self.slot.length+1}/{self.nSlotFrames} to slot')
             self.slot.add(frame)
@@ -102,6 +102,8 @@ class FrameAnalysis(PiYUVAnalysis):
                 # add current slot to slots
                 log.debug('Cycling slot')
                 if self.cycleSlots(self.slot):
+                    # all slots filles and ready for analysis
+                    self.state = State.DETECT
                     # analyse for differences between newest and oldest slot
                     log.debug('Comparing newest to oldest slot')
                     self.analysis = Analysis(self.slots[0], self.slots[-1], self.thresh, self.maxHoleSize)

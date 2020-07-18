@@ -4,7 +4,7 @@ if emulation.emulated:
     from emulation import PiCamera
 else:
     from picamera import PiCamera # to access the camera
-from imgproc import FrameAnalysis, Mode # for camera frame processing
+from imgproc import FrameAnalysis, State # for camera frame processing
 import logging # for more advanced prints
 import socketserver # to make a server
 from http import server # to handle http requests
@@ -21,7 +21,7 @@ updateSettings = {}
 class StreamingHandler(server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         self.oldStreamImage = None
-        self.oldMode = None
+        self.oldState = None
         self.oldFrameCnt = None
         self.oldMarks = None
         super().__init__(*args, directory='html', **kwargs)
@@ -91,7 +91,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                             'contrast': camera.contrast, 
                             'threshold': spotter.thresh, 
                             'average': spotter.nSlotFrames, 
-                            'mode': 'Start' if spotter.mode == Mode.PREVIEW else 'Stop'
+                            'state': spotter.state
                         }
                         # send data
                         self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
@@ -120,16 +120,16 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                     time.sleep(0.01) # reduce idle load
             except BrokenPipeError:
                 log.info(f'Removed streaming client {self.client_address}')
-        elif '/mode' in self.path:
-            # mode change
+        elif '/state' in self.path:
+            # state change
             self.sendEventStreamHeader()
             try:
                 while True:
-                    if self.oldMode != spotter.mode:
+                    if self.oldState != spotter.state:
                         data = {}
                         
                         # put in mirror picker size
-                        if spotter.mode == Mode.PREVIEW:
+                        if spotter.state == State.PREVIEW:
                             picker = {
                                 'width': 100*spotter.mirrorPickSize/camera.resolution[0], 
                                 'height': 100*spotter.mirrorPickSize/camera.resolution[1]
@@ -137,7 +137,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                             data.update({'pickersize': picker})
 
                         # put in mirror coordinates in percent related to stream
-                        if spotter.mode == Mode.DETECT and spotter.mirrorBounds and spotter.paperBounds:
+                        if spotter.state == State.DETECT and spotter.mirrorBounds and spotter.paperBounds:
                             mirror = {
                                 'left': 100*spotter.mirrorBounds.left/spotter.paperBounds.width, 
                                 'top': 100*spotter.mirrorBounds.top/spotter.paperBounds.height, 
@@ -148,7 +148,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
 
                         # send data
                         self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
-                        self.oldMode = spotter.mode
+                        self.oldState = spotter.state
                     
                     time.sleep(0.1) # reduce idle load
             except BrokenPipeError:
@@ -169,6 +169,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                             }
                             data.append(coords)
                         # send data
+                        log.info(f'Sending marks: {data}')
                         self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
                         self.oldMarks = spotter.marks
                     
@@ -205,10 +206,10 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
             elif param == 'mode':
                 # change mode
                 modes = {
-                    'start': Mode.START, 
-                    'preview': Mode.PREVIEW
+                    'start': State.START, 
+                    'preview': State.PREVIEW
                 }
-                spotter.mode = modes.get(value, Mode.PREVIEW)
+                spotter.state = modes.get(value, State.PREVIEW)
             
             # update settings for all clients
             for k in updateSettings:
