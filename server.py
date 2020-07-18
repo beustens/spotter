@@ -120,7 +120,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                     time.sleep(0.01) # reduce idle load
             except BrokenPipeError:
                 log.info(f'Removed streaming client {self.client_address}')
-        elif '/state' in self.path:
+        elif '/mode' in self.path:
             # mode change
             self.sendEventStreamHeader()
             try:

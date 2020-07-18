@@ -36,7 +36,7 @@ infoSource.onmessage = function(event) {
     }
 };
 
-const stateSource = new EventSource("/state");
+const stateSource = new EventSource("/mode");
 stateSource.onmessage = function(event) {
     const data = JSON.parse(event.data); // parse dictionary
 
