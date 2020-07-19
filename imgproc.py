@@ -49,7 +49,7 @@ class FrameAnalysis(PiYUVAnalysis):
         self.maxHoleSize = 20 # maximum expected hole size in width or height pixels
         
         # marks related
-        self.maxMarks = 50 # maximum number marks to keep in history
+        self.maxMarks = 100 # maximum number marks to keep in history
 
         self.reset()
     
@@ -63,6 +63,7 @@ class FrameAnalysis(PiYUVAnalysis):
         self.slot = Slot()
         self.slots = []
         self.analysis = None # last analysis
+        self.detected = []
         self.marks = []
     
 
@@ -104,17 +105,25 @@ class FrameAnalysis(PiYUVAnalysis):
                 if self.cycleSlots(self.slot):
                     # all slots filles and ready for analysis
                     self.state = State.DETECT
+                    display = np.copy(self.slots[0].mean)
                     # analyse for differences between newest and oldest slot
                     log.debug('Comparing newest to oldest slot')
                     self.analysis = Analysis(self.slots[0], self.slots[-1], self.thresh, self.maxHoleSize)
                     if self.analysis.valid:
                         log.info(f'Valid change detected at {self.analysis.rect.center}')
+                        # add detection to mark consideration
+                        self.detected.append(self.analysis)
+                        # debug display
+                        display[self.analysis.mask] = 255
+                    else:
                         # add mark of detection
-                        log.debug('Adding change detection mark')
-                        self.cycleMarks(self.analysis)
+                        if self.detected:
+                            log.debug('Adding change detection mark')
+                            self.cycleMarks(self.detected[0].rect.center)
+                        self.detected = []
                     
                     # TODO: parallel to above processing, convert frame to image
-                    self.streamImage = self.frameToImage(self.slots[0].mean)
+                    self.streamImage = self.frameToImage(display)
         
         self.procTime = time.perf_counter()-startTime
     
@@ -170,6 +179,7 @@ class FrameAnalysis(PiYUVAnalysis):
         '''
         Pushes new slot into buffer
 
+        :param slot: Slot object
         :returns: True if all slots filled, False otherwise
         '''
         self.slots.insert(0, slot) # store current slot
@@ -181,11 +191,13 @@ class FrameAnalysis(PiYUVAnalysis):
             return False
     
 
-    def cycleMarks(self, analysis):
+    def cycleMarks(self, pos):
         '''
         Pushes new mark middle position into buffer
+
+        :param pos: tuple of (left, top) pixel matrix indices
         '''
-        self.marks.insert(0, analysis.rect.center)
+        self.marks.insert(0, pos)
         if len(self.marks) > self.maxMarks:
             self.marks.pop(-1)
     
@@ -345,18 +357,31 @@ class Analysis:
         # mask
         diff = newSlot.mean-oldSlot.mean
         log.debug(f'diff min: {diff.min()}, max: {diff.max()}, threshold: {-thresh}')
+        diff = ndimage.gaussian_filter(diff, 2) # to eliminate outliers
         mask = diff < -thresh
-        mask = ndimage.binary_erosion(mask).astype(mask.dtype) # erode mask to eliminate outliers
+        #mask = ndimage.binary_erosion(mask).astype(mask.dtype) # erode mask to eliminate outliers
         iMask = np.argwhere(mask)
-        if len(iMask) > 0:
-            log.debug(f'{len(iMask)} pixels changed')
-            xMin, xMax = np.min(iMask[:, 1]), np.max(iMask[:, 1])
-            yMin, yMax = np.min(iMask[:, 0]), np.max(iMask[:, 0])
+        nChange = len(iMask)
+        if nChange > 0:
+            log.debug(f'{nChange} pixels changed')
+            # getting change bounds
+            x = iMask[:, 1]
+            xMin, xMax = np.min(x), np.max(x)
+            y = iMask[:, 0]
+            yMin, yMax = np.min(y), np.max(y)
             self.rect = Rect(xMin, xMax, yMin, yMax)
             log.debug(f'Change width: {self.rect.width}, height: {self.rect.height}')
-            # check diff size
+            # check valid size
             if self.rect.width < maxSize and self.rect.height < maxSize:
                 self.mask = mask
                 self.valid = True
             else:
                 log.info('Too many pixels changed')
+    
+
+    def __repr__(self):
+        s = f'Analysis({"valid" if self.valid else "invalid"} change'
+        if self.valid:
+            s += f', {self.rect.width}w x {self.rect.height}h'
+        s += ')'
+        return s
