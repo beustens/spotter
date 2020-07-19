@@ -86,8 +86,16 @@ input[type="button"]:hover {
     transform: translate(-50%, -50%);
 }
 
-.mark:nth-child(1) {
+.mark:nth-child(-n+11) {
+    border-color: #60e030;
+}
+
+.mark:nth-child(-n+6) {
     border-color: #ffd000;
+}
+
+.mark:nth-child(1) {
+    border-color: #ff0000;
 }
 
 .center {
