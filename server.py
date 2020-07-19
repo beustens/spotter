@@ -111,7 +111,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                             'Processing time': f'{(spotter.procTime*1e3):.2f} ms', 
                             'Exposure time': f'{(camera.exposure_speed/1e3):.2f} ms', 
                             'Frames in slot': f'{spotter.slot.length}/{spotter.nSlotFrames}', 
-                            'Last analysis': '--' if spotter.analysis is None else ('No valid change detected' if   not spotter.analysis.valid else f'Changes detected in {spotter.analysis.rect}')
+                            'Last analysis': '--' if spotter.analysis is None else str(spotter.analysis)
                         }
                         # send data
                         self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
