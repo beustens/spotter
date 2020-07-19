@@ -41,31 +41,39 @@ stateSource.onmessage = function(event) {
     const data = JSON.parse(event.data); // parse dictionary
 
     // configure mirror picker overlay
-    const picker = document.getElementById("picker");
+    const pickerEle = document.getElementById("picker");
     if ("pickersize" in data) {
         // in preview state, display picker and set size
         const size = data.pickersize;
-        picker.style.width = size.width+"%";
-        picker.style.height = size.height+"%";
-        picker.style.display = "block";
+        pickerEle.style.width = size.width+"%";
+        pickerEle.style.height = size.height+"%";
+        pickerEle.style.display = "block";
     } else {
         // hide picker
-        picker.style.display = "none";
+        pickerEle.style.display = "none";
     }
 
     // configure mirror
-    const mirror = document.getElementById("mirror");
+    const mirrorEle = document.getElementById("mirror");
     if ("mirrorsize" in data) {
         // display mirror and set coords/size
         const size = data.mirrorsize;
-        mirror.style.width = size.width+"%";
-        mirror.style.height = size.height+"%";
-        mirror.style.top = size.top+"%";
-        mirror.style.left = size.left+"%";
-        mirror.style.display = "block";
+        mirrorEle.style.width = size.width+"%";
+        mirrorEle.style.height = size.height+"%";
+        mirrorEle.style.top = size.top+"%";
+        mirrorEle.style.left = size.left+"%";
+        mirrorEle.style.display = "block";
     } else {
         // hide mirror
-        mirror.style.display = "none";
+        mirrorEle.style.display = "none";
+    }
+
+    // configure message
+    const msgEle = document.getElementById("message");
+    if (data.state === "COLLECT") {
+        msgEle.style.display = "block";
+    } else {
+        msgEle.style.display = "none";
     }
 };
 

@@ -126,7 +126,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
             try:
                 while True:
                     if self.oldState != spotter.state:
-                        data = {}
+                        data = {'state': str(spotter.state).split('.')[1]}
                         
                         # put in mirror picker size
                         if spotter.state == State.PREVIEW:

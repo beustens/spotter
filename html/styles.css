@@ -90,8 +90,14 @@ input[type="button"]:hover {
     border-color: #ffd000;
 }
 
-#picker {
+.center {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+}
+
+#message {
+    background-color: #ffffff7f;
+    padding: 0.5em;
+    font-size: 1.5em;
 }
