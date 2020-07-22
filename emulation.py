@@ -3,13 +3,23 @@ import numpy as np # for image generation
 from scipy import ndimage # for image processing
 import threading # for non-blocking execution
 import time # for waiting to generate next image
+import cv2 # for grabbing images from video
+import argparse # for getting arguments when calling script
 
-emulated = True if '-e' in sys.argv else False
+
+# setup arguments for command line
+parser = argparse.ArgumentParser()
+parser.add_argument('-e', '--emulate', help='Generates artificial frames instead of using the pi camera', action='store_true')
+parser.add_argument('-v', '--video', help='Optional path to a video file to use its frames instead of the pi camera', default='')
+# evaluate arguments
+args = parser.parse_args()
+
+emulated = args.emulate
 
 
-class PiCamera:
+class Emulator:
     '''
-    Fake picamera.PiCamera class to emulate camera
+    Base fake picamera.PiCamera class to emulate camera
 
     Note: Does not support original features
     '''
@@ -18,16 +28,8 @@ class PiCamera:
         self.normContrast = 1. # 0...2
         self.fakeFPS = 15
         self.exposure_speed = 1e6/self.fakeFPS
-        self.mirrorRatio = 0.1 # radius as ratio to image width
-        self.paperSize = 3*self.mirrorRatio
         self.thread = None
         self.stopper = threading.Event()
-        self.holeRatio = 0.005 # radius as ratio to image with
-        self.holePeriod = 3. # generate every x seconds a new hole
-        self.holeTime = time.time()+10. # start hole generation in y seconds
-        self.makeCoords()
-        self.baseImage = self.generateBaseImage()
-        np.random.seed(0)
     
 
     def __enter__(self):
@@ -79,6 +81,48 @@ class PiCamera:
         Stops fake image generation
         '''
         self.stopper.set()
+    
+
+    def generateImage(self):
+        '''
+        :returns: fake image of paper and mirror
+        '''
+        raise NotImplementedError('Generation of new fake image must be implemented here')
+
+
+    def _imageGeneration(self, analysis):
+        '''
+        Fake image generation
+        '''
+        period = 1./self.fakeFPS
+        tNext = time.time()
+        while True:
+            img = self.generateImage() # generate image
+            analysis.analyse(img) # let external analysis process image
+
+            # check if we should stop generating images
+            if self.stopper.is_set():
+                break
+
+            # wait until next image generation
+            tNext += period
+            time.sleep(max(0., tNext-time.time()))
+
+
+class ArtificialPiCamera(Emulator):
+    '''
+    Generates fake images based on algorithm
+    '''
+    def __init__(self):
+        super().__init__()
+        self.mirrorRatio = 0.1 # radius as ratio to image width
+        self.paperSize = 3*self.mirrorRatio
+        self.holeRatio = 0.005 # radius as ratio to image with
+        self.holePeriod = 3. # generate every x seconds a new hole
+        self.holeTime = time.time()+10. # start hole generation in y seconds
+        self.makeCoords()
+        self.baseImage = self.generateBaseImage()
+        np.random.seed(0)
     
 
     def makeCoords(self):
@@ -156,23 +200,28 @@ class PiCamera:
         return img
 
 
-    def _imageGeneration(self, analysis):
-        '''
-        Fake image generation
-        '''
-        period = 1./self.fakeFPS
-        tNext = time.time()
-        while True:
-            img = self.generateImage() # generate image
-            analysis.analyse(img) # let external analysis process image
+class VideoPiCamera(Emulator):
+    '''
+    Streams fake images from video
+    '''
+    def __init__(self):
+        super().__init__()
+        self.video = cv2.VideoCapture(args.video)
+    
 
-            # check if we should stop generating images
-            if self.stopper.is_set():
-                break
+    def generateImage(self):
+        '''
+        :returns: video frame image
+        '''
+        _, img = self.video.read()
+        # make grayscale image
+        img = np.mean(img, axis=2, dtype=np.uint8)
+        img = np.repeat(img[..., None], 3, axis=2)
+        return img
 
-            # wait until next image generation
-            tNext += period
-            time.sleep(max(0., tNext-time.time()))
+
+class PiCamera(VideoPiCamera if args.video else ArtificialPiCamera):
+    pass
 
 
 class PiYUVAnalysis:
