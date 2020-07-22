@@ -27,7 +27,7 @@ class FrameAnalysis(PiYUVAnalysis):
     MAX_SLOTS = 3
 
     def __init__(self, *args, **kwargs):
-        super(FrameAnalysis, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         # general
         self.frameCnt = 0
         self.streamImage = bytes()
