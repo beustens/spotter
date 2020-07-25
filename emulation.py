@@ -213,10 +213,14 @@ class VideoPiCamera(Emulator):
         '''
         :returns: video frame image
         '''
-        _, img = self.video.read()
-        # make grayscale image
-        img = np.mean(img, axis=2, dtype=np.uint8)
-        img = np.repeat(img[..., None], 3, axis=2)
+        success, img = self.video.read()
+        if not success:
+            self.video.set(1, 0) # set playback to start
+            success, img = self.video.read()
+            if not success:
+                raise Exception('Cannot read frame from video')
+        # convert to yuv
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
         return img
 
 
