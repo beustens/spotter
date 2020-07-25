@@ -113,14 +113,14 @@ class FrameAnalysis(PiYUVAnalysis):
                     if self.analysis.valid:
                         log.info(f'Valid change detected at {self.analysis.rect.center}')
                         # add detection to mark consideration
-                        self.detected.append(self.analysis)
+                        self.detected.append(self.analysis.rect.center)
                         # debug display
                         display[self.analysis.mask] = 255
                     else:
                         # add mark of detection
                         if self.detected:
                             log.debug('Adding change detection mark')
-                            self.cycleMarks(self.detected[0].rect.center)
+                            self.cycleMarks(self.detected[0])
                         self.detected = []
                     
                     # TODO: parallel to above processing, convert frame to image
