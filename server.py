@@ -210,6 +210,9 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                     'preview': State.PREVIEW
                 }
                 spotter.state = modes.get(value, State.PREVIEW)
+            elif param == 'showdiff':
+                # show normal or diff image
+                spotter.showDiff = value
             
             # update settings for all clients
             for k in updateSettings:

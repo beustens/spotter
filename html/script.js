@@ -121,3 +121,9 @@ function toggleMode(btnElement) {
         btnElement.value = "Start"
     }
 }
+
+
+function toggleView(checkElement) {
+    // switch between normal view and differences between frames
+    post("/setting", {param: "showdiff", value: checkElement.checked});
+}

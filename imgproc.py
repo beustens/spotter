@@ -32,6 +32,7 @@ class FrameAnalysis(PiYUVAnalysis):
         self.frameCnt = 0
         self.streamImage = bytes()
         self.procTime = 0.
+        self.showDiff = False # show amplified diff instead of the camera frames
         self.state = State.PREVIEW # do not average and detect changes yet
 
         # mirror detection related
@@ -105,10 +106,10 @@ class FrameAnalysis(PiYUVAnalysis):
                 if self.cycleSlots(self.slot):
                     # all slots filles and ready for analysis
                     self.state = State.DETECT
-                    display = np.copy(self.slots[0].mean)
                     # analyse for differences between newest and oldest slot
                     log.debug('Comparing newest to oldest slot')
                     self.analysis = Analysis(self.slots[0], self.slots[-1], self.thresh, self.maxHoleSize)
+                    display = np.copy(np.abs(self.analysis.diff*30) if self.showDiff else self.slots[0].mean)
                     if self.analysis.valid:
                         log.info(f'Valid change detected at {self.analysis.rect.center}')
                         # add detection to mark consideration
@@ -357,10 +358,10 @@ class Analysis:
         # mask
         diff = newSlot.mean-oldSlot.mean
         log.debug(f'diff min: {diff.min()}, max: {diff.max()}, threshold: {-thresh}')
-        diff = ndimage.gaussian_filter(diff, 2) # to eliminate outliers
-        mask = diff < -thresh
+        self.diff = ndimage.gaussian_filter(diff, 2) # to eliminate outliers
+        self.mask = self.diff < -thresh
         #mask = ndimage.binary_erosion(mask).astype(mask.dtype) # erode mask to eliminate outliers
-        iMask = np.argwhere(mask)
+        iMask = np.argwhere(self.mask )
         nChange = len(iMask)
         if nChange > 0:
             log.debug(f'{nChange} pixels changed')
@@ -373,7 +374,6 @@ class Analysis:
             log.debug(f'Change width: {self.rect.width}, height: {self.rect.height}')
             # check valid size
             if self.rect.width < maxSize and self.rect.height < maxSize:
-                self.mask = mask
                 self.valid = True
             else:
                 log.info('Too many pixels changed')
