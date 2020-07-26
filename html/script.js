@@ -81,9 +81,13 @@ const settingsSource = new EventSource("/settings");
 settingsSource.onmessage = function(event) {
     const data = JSON.parse(event.data); // parse dictionary
     // insert parameters in inputs
-    for (const element of document.getElementsByTagName("input")) {
-        if (element.name in data) {
-            element.value = data[element.name];
+    for (const inputEle of document.getElementsByTagName("input")) {
+        if (inputEle.name in data) {
+            if (inputEle.type == "checkbox") {
+                inputEle.checked = data[inputEle.name];
+            } else {
+                inputEle.value = data[inputEle.name];
+            }
         }
     }
 }
