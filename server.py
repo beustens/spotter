@@ -27,6 +27,37 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
         super().__init__(*args, directory='html', **kwargs)
     
 
+    def pointPercent(self, point):
+        '''
+        Percent of point pixel coordinates on background stream
+
+        :param point: (left, top) pixel coordinates
+        :returns: dictionary with keys "left", "top"
+            and values in percentage
+        '''
+        x, y = point
+        w, h = spotter.streamDims
+        return {'left': 100*x/w, 'top': 100*y/h}
+    
+
+    def rectPercent(self, rect):
+        '''
+        Percent of rect pixel coordinates on background stream
+
+        :param rect: Rect object in pixel coordinates
+        :returns: dictionary with keys "left", "top", "width", "height"
+            and values in percentage
+        '''
+        w, h = spotter.streamDims
+        percent = {
+            'left': 100*rect.left/w, 
+            'top': 100*rect.top/h, 
+            'width': 100*rect.width/w, 
+            'height': 100*rect.height/h
+        }
+        return percent
+    
+
     def sendEventStreamHeader(self):
         '''
         Sends response and header for text/event-stream
@@ -91,6 +122,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                             'contrast': camera.contrast, 
                             'threshold': spotter.thresh, 
                             'average': spotter.nSlotFrames, 
+                            'showdiff': spotter.showDiff, 
                             'mode': 'Start' if spotter.state == State.PREVIEW else 'Stop'
                         }
                         # send data
@@ -138,13 +170,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
 
                         # put in mirror coordinates in percent related to stream
                         if spotter.state == State.DETECT and spotter.mirrorBounds and spotter.paperBounds:
-                            mirror = {
-                                'left': 100*spotter.mirrorBounds.left/spotter.paperBounds.width, 
-                                'top': 100*spotter.mirrorBounds.top/spotter.paperBounds.height, 
-                                'width': 100*spotter.mirrorBounds.width/spotter.paperBounds.width, 
-                                'height': 100*spotter.mirrorBounds.height/spotter.paperBounds.height
-                            }
-                            data.update({'mirrorsize': mirror})
+                            data.update({'mirrorsize': self.rectPercent(spotter.mirrorBounds)})
 
                         # send data
                         self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
@@ -160,15 +186,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                 while True:
                     marksHash = hash(tuple(spotter.marks)) # to detect changed mark list
                     if self.oldMarks != marksHash:
-                        data = []
-                        # collect percentage coordinates of marks
-                        for mark in spotter.marks:
-                            x, y = mark
-                            coords = {
-                                'left': 100*x/spotter.paperBounds.width, 
-                                'top': 100*y/spotter.paperBounds.height
-                            }
-                            data.append(coords)
+                        data = [self.pointPercent(mark) for mark in spotter.marks]
                         # send data
                         self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
                         self.oldMarks = marksHash

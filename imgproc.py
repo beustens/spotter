@@ -30,6 +30,7 @@ class FrameAnalysis(PiYUVAnalysis):
         super().__init__(*args, **kwargs)
         # general
         self.frameCnt = 0
+        self.streamDims = self.camera.resolution # (width, height) in pixels of current background
         self.streamImage = bytes()
         self.procTime = 0.
         self.showDiff = False # show amplified diff instead of the camera frames
@@ -82,17 +83,20 @@ class FrameAnalysis(PiYUVAnalysis):
         if self.state == State.PREVIEW:
             # in preview state, reset analysis results and output uncropped frame
             self.reset()
+            self.streamDims = (frame.shape[1], frame.shape[0])
             self.streamImage = self.frameToImage(frame)
         elif self.state == State.START:
             # auto-crop and detect mirror
-            log.info('Switching to START sate')
+            log.info('Switching to START state')
             # find mirror (black circle on paper)
             self.mirrorBounds = self.findMirror(frame)
             log.debug(f'Mirror bounds in image: {self.mirrorBounds}')
             # get paper crop and re-calculate mirror bounds within cropped area
             self.paperBounds = self.mirrorBounds.scaled(self.paperScale)
             self.mirrorBounds = self.mirrorBounds.relativeTo(self.paperBounds)
-            log.info('Switching to COLLECT sate')
+            # get cropped background dimensions
+            self.streamDims = (self.paperBounds.width, self.paperBounds.height)
+            log.info('Switching to COLLECT state')
             self.state = State.COLLECT
         else:
             # filling slots with frames
