@@ -164,8 +164,8 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                         # put in mirror picker size
                         if spotter.state == State.PREVIEW:
                             picker = {
-                                'width': 100*spotter.mirrorPickSize/spotter.streamDims.width, 
-                                'height': 100*spotter.mirrorPickSize/spotter.streamDims.height
+                                'width': 100*spotter.mirrorPickSize/camera.resolution[0], 
+                                'height': 100*spotter.mirrorPickSize/camera.resolution[1]
                             }
                             data.update({'pickersize': picker})
 
