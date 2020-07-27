@@ -53,19 +53,23 @@ stateSource.onmessage = function(event) {
         pickerEle.style.display = "none";
     }
 
-    // configure mirror
-    const mirrorEle = document.getElementById("mirror");
-    if ("mirrorsize" in data) {
-        // display mirror and set coords/size
-        const size = data.mirrorsize;
-        mirrorEle.style.width = size.width+"%";
-        mirrorEle.style.height = size.height+"%";
-        mirrorEle.style.top = size.top+"%";
-        mirrorEle.style.left = size.left+"%";
-        mirrorEle.style.display = "block";
-    } else {
-        // hide mirror
-        mirrorEle.style.display = "none";
+    // configure rings
+    const ringsEle = document.getElementById("rings");
+    ringsEle.innerHTML = "";
+    // insert marks in container
+    if ("ringsizes" in data) {
+        for (const size of data.ringsizes) {
+            // create ring element
+            const ringEle = document.createElement("div");
+            ringEle.classList.add("overlay");
+            ringEle.classList.add("circle");
+            ringEle.style.width = size.width+"%";
+            ringEle.style.height = size.height+"%";
+            ringEle.style.top = size.top+"%";
+            ringEle.style.left = size.left+"%";
+            // add ring to container
+            ringsEle.appendChild(ringEle);
+        }
     }
 
     // configure message

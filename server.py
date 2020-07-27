@@ -5,6 +5,7 @@ if emulation.emulated:
 else:
     from picamera import PiCamera # to access the camera
 from imgproc import FrameAnalysis, State # for camera frame processing
+from target import Target # to display rings and value marks
 import logging # for more advanced prints
 import socketserver # to make a server
 from http import server # to handle http requests
@@ -20,6 +21,7 @@ updateSettings = {}
 
 class StreamingHandler(server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
+        self.target = Target()
         self.oldStreamImage = None
         self.oldState = None
         self.oldFrameCnt = None
@@ -36,8 +38,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
             and values in percentage
         '''
         x, y = point
-        w, h = spotter.streamDims
-        return {'left': 100*x/w, 'top': 100*y/h}
+        return {'left': 100*x/spotter.streamDims.width, 'top': 100*y/spotter.streamDims.height}
     
 
     def rectPercent(self, rect):
@@ -48,7 +49,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
         :returns: dictionary with keys "left", "top", "width", "height"
             and values in percentage
         '''
-        w, h = spotter.streamDims
+        w, h = spotter.streamDims.width, spotter.streamDims.height
         percent = {
             'left': 100*rect.left/w, 
             'top': 100*rect.top/h, 
@@ -163,14 +164,15 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                         # put in mirror picker size
                         if spotter.state == State.PREVIEW:
                             picker = {
-                                'width': 100*spotter.mirrorPickSize/camera.resolution[0], 
-                                'height': 100*spotter.mirrorPickSize/camera.resolution[1]
+                                'width': 100*spotter.mirrorPickSize/spotter.streamDims.width, 
+                                'height': 100*spotter.mirrorPickSize/spotter.streamDims.height
                             }
                             data.update({'pickersize': picker})
 
-                        # put in mirror coordinates in percent related to stream
-                        if spotter.state == State.DETECT and spotter.mirrorBounds and spotter.paperBounds:
-                            data.update({'mirrorsize': self.rectPercent(spotter.mirrorBounds)})
+                        # put in mirror coordinates in percent to stream
+                        if spotter.state == State.DETECT and spotter.mirrorBounds:
+                            rings = [self.rectPercent(ring) for ring in self.target.getRingBounds(spotter.mirrorBounds)]
+                            data.update({'ringsizes': rings})
 
                         # send data
                         self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())

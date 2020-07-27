@@ -30,17 +30,16 @@ class FrameAnalysis(PiYUVAnalysis):
         super().__init__(*args, **kwargs)
         # general
         self.frameCnt = 0
-        self.streamDims = self.camera.resolution # (width, height) in pixels of current background
+        self.streamDims = Dimensions(*self.camera.resolution) # width, height in pixels of current background
         self.streamImage = bytes()
         self.procTime = 0.
         self.showDiff = False # show amplified diff instead of the camera frames
         self.state = State.PREVIEW # do not average and detect changes yet
 
         # mirror detection related
+        self.pickScaleDims = Dimensions(1., 1.) # scale correction factors for picked size
         self.mirrorTolerance = 15 # tolerance to find mirror pixels from center luminance
         self.mirrorPickSize = 10 # center size (width and height) in pixels to pick luminance
-
-        # paper crop related
         self.paperScale = 3. # overall paper is that much larger than mirror
 
         # slot related
@@ -60,8 +59,8 @@ class FrameAnalysis(PiYUVAnalysis):
         '''
         Resets analysis results
         '''
+        self.cropBounds = None
         self.mirrorBounds = None
-        self.paperBounds = None
         self.slot = Slot()
         self.slots = []
         self.analysis = None # last analysis
@@ -83,24 +82,21 @@ class FrameAnalysis(PiYUVAnalysis):
         if self.state == State.PREVIEW:
             # in preview state, reset analysis results and output uncropped frame
             self.reset()
-            self.streamDims = (frame.shape[1], frame.shape[0])
-            self.streamImage = self.frameToImage(frame)
+            self.makeStreamImage(frame)
         elif self.state == State.START:
-            # auto-crop and detect mirror
-            log.info('Switching to START state')
-            # find mirror (black circle on paper)
-            self.mirrorBounds = self.findMirror(frame)
-            log.debug(f'Mirror bounds in image: {self.mirrorBounds}')
-            # get paper crop and re-calculate mirror bounds within cropped area
-            self.paperBounds = self.mirrorBounds.scaled(self.paperScale)
-            self.mirrorBounds = self.mirrorBounds.relativeTo(self.paperBounds)
-            # get cropped background dimensions
-            self.streamDims = (self.paperBounds.width, self.paperBounds.height)
-            log.info('Switching to COLLECT state')
+            # detect mirror
+            log.info('Detecting mirror')
+            pickBounds = self.findMirror(frame)
+            log.debug(f'Mirror bounds in camera frame: {pickBounds}')
+            self.cropBounds = pickBounds.scaled(self.paperScale).minimized(frame)
+            self.mirrorBounds = pickBounds.relativeTo(self.cropBounds)
+            # proceed with next state
+            log.info('Collecting frames')
             self.state = State.COLLECT
         else:
-            # filling slots with frames
-            frame = self.crop(frame, self.paperBounds) # crop
+            # COLLECT or DETECT state
+            # crop frame
+            frame = self.crop(frame, self.cropBounds)
             # add frame to current slot
             log.debug(f'Adding frame {self.slot.length+1}/{self.nSlotFrames} to slot')
             self.slot.add(frame)
@@ -128,7 +124,7 @@ class FrameAnalysis(PiYUVAnalysis):
                         self.detected = []
                     
                     # TODO: parallel to above processing, convert frame to image
-                    self.streamImage = self.frameToImage(display)
+                    self.makeStreamImage(display)
         
         self.procTime = time.perf_counter()-startTime
     
@@ -141,13 +137,7 @@ class FrameAnalysis(PiYUVAnalysis):
         :param rect: Rect object
         :returns: cropped frame
         '''
-        # ensure rect is in bounds of frame
-        top = max(0, rect.top)
-        bottom = min(frame.shape[0], rect.bottom)
-        left = max(0, rect.left)
-        right = min(frame.shape[1], rect.right)
-        # crop
-        return frame[top:bottom, left:right]
+        return frame[rect.top:rect.bottom, rect.left:rect.right]
     
     
     def findMirror(self, frame):
@@ -178,6 +168,14 @@ class FrameAnalysis(PiYUVAnalysis):
         yMin, yMax = np.min(iMask[:, 0]), np.max(iMask[:, 0])
         
         return Rect(xMin, xMax, yMin, yMax)
+    
+
+    @property
+    def corrMirrorBounds(self):
+        '''
+        Corrected mirror bounds in cropped frame
+        '''
+        return self.mirrorBounds.scaled(self.pickScaleDims)
     
 
     def cycleSlots(self, slot):
@@ -221,15 +219,15 @@ class FrameAnalysis(PiYUVAnalysis):
         return buffer.getvalue() # get buffer bytes
     
 
-    def frameToImage(self, frame):
+    def makeStreamImage(self, frame):
         '''
         Converts a grayscale frame to bytes of its image
 
         :param frame: (h, w) array (int16 grayscale matrix)
-        :returns: image file bytes
         '''
+        self.streamDims.fromShape(frame.shape)
         img = frame.astype(np.uint8)
-        return self.imgArrayToImgBytes(img)
+        self.streamImage = self.imgArrayToImgBytes(img)
 
 
 class Slot:
@@ -267,6 +265,20 @@ class Slot:
             self._mean = np.mean(self.frames, axis=0, dtype=np.int16)
         
         return self._mean
+
+
+class Dimensions:
+    '''
+    Holds width and height values
+    '''
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+    
+
+    def fromShape(self, shape):
+        self.width = shape[1]
+        self.height = shape[0]
 
 
 class Rect:
@@ -312,14 +324,21 @@ class Rect:
         '''
         Scales the rect from center pivot point
 
-        :param fac: float factor to scale
+        :param fac: float factor to scale or 
+            Dimensions object for two scale factors
         :returns: new scaled rect
         '''
-        xMid, yMid = self.center
-        left = int(fac*self.left-fac*xMid)+xMid
-        right = int(fac*self.right-fac*xMid)+xMid
-        top = int(fac*self.top-fac*yMid)+yMid
-        bottom = int(fac*self.bottom-fac*yMid)+yMid
+        midX, midY = self.center
+        # check if scalar or dimensions
+        if isinstance(fac, Dimensions):
+            facX, facY = fac.width, fac.height
+        else:
+            facX = facY = fac
+        # scale
+        left = int(facX*self.left-facX*midX)+midX
+        right = int(facX*self.right-facX*midX)+midX
+        top = int(facY*self.top-facY*midY)+midY
+        bottom = int(facY*self.bottom-facY*midY)+midY
         return Rect(left, right, top, bottom)
     
 
@@ -345,6 +364,21 @@ class Rect:
         :returns: new relative Rect object
         '''
         return self.moved(-ref.left, -ref.top)
+    
+
+    def minimized(self, frame):
+        '''
+        Shrinks to fit on frame
+
+        :param frame: (h, w) array (int16 grayscale matrix)
+        :returns: new minimized Rect object
+        '''
+        # ensure rect is in bounds of frame
+        top = max(0, self.top)
+        bottom = min(frame.shape[0], self.bottom)
+        left = max(0, self.left)
+        right = min(frame.shape[1], self.right)
+        return Rect(left, right, top, bottom)
 
 
 class Analysis:
