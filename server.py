@@ -38,7 +38,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
             and values in percentage
         '''
         x, y = point
-        return {'left': 100*x/spotter.streamDims.width, 'top': 100*y/spotter.streamDims.height}
+        return {'left': 100*x/spotter.streamDims[0], 'top': 100*y/spotter.streamDims[1]}
     
 
     def rectPercent(self, rect):
@@ -49,7 +49,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
         :returns: dictionary with keys "left", "top", "width", "height"
             and values in percentage
         '''
-        w, h = spotter.streamDims.width, spotter.streamDims.height
+        w, h = spotter.streamDims[0], spotter.streamDims[1]
         percent = {
             'left': 100*rect.left/w, 
             'top': 100*rect.top/h, 

@@ -30,14 +30,14 @@ class FrameAnalysis(PiYUVAnalysis):
         super().__init__(*args, **kwargs)
         # general
         self.frameCnt = 0
-        self.streamDims = Dimensions(*self.camera.resolution) # width, height in pixels of current background
+        self.streamDims = self.camera.resolution # width, height in pixels of current background
         self.streamImage = bytes()
         self.procTime = 0.
         self.showDiff = False # show amplified diff instead of the camera frames
         self.state = State.PREVIEW # do not average and detect changes yet
 
         # mirror detection related
-        self.pickScaleDims = Dimensions(1., 1.) # scale correction factors for picked size
+        self.pickScaleDims = (1., 1.) # scale correction factors for picked size
         self.mirrorTolerance = 15 # tolerance to find mirror pixels from center luminance
         self.mirrorPickSize = 10 # center size (width and height) in pixels to pick luminance
         self.paperScale = 3. # overall paper is that much larger than mirror
@@ -225,7 +225,7 @@ class FrameAnalysis(PiYUVAnalysis):
 
         :param frame: (h, w) array (int16 grayscale matrix)
         '''
-        self.streamDims.fromShape(frame.shape)
+        self.streamDims = frame.shape[::-1]
         img = frame.astype(np.uint8)
         self.streamImage = self.imgArrayToImgBytes(img)
 
@@ -265,20 +265,6 @@ class Slot:
             self._mean = np.mean(self.frames, axis=0, dtype=np.int16)
         
         return self._mean
-
-
-class Dimensions:
-    '''
-    Holds width and height values
-    '''
-    def __init__(self, width, height):
-        self.width = width
-        self.height = height
-    
-
-    def fromShape(self, shape):
-        self.width = shape[1]
-        self.height = shape[0]
 
 
 class Rect:
@@ -325,13 +311,13 @@ class Rect:
         Scales the rect from center pivot point
 
         :param fac: float factor to scale or 
-            Dimensions object for two scale factors
+            tuple for two scale factors
         :returns: new scaled rect
         '''
         midX, midY = self.center
         # check if scalar or dimensions
-        if isinstance(fac, Dimensions):
-            facX, facY = fac.width, fac.height
+        if isinstance(fac, tuple):
+            facX, facY = fac[0], fac[1]
         else:
             facX = facY = fac
         # scale
