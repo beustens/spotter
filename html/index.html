@@ -32,6 +32,13 @@
                     <div>
                         Show difference: <input type="checkbox" name="showdiff" onclick="toggleView(this)">
                     </div>
+                    <p>Ring corrections</p>
+                    <div>
+                        width: <input type="number" name="ringswidth" onchange="enterParam(this)"><span>height: </span><input type="number" name="ringsheight" onchange="enterParam(this)">
+                    </div>
+                    <div>
+                        left: <input type="number" name="ringsleft" step="1" onchange="enterParam(this)"><span>top: </span><input type="number" name="ringstop" step="1" onchange="enterParam(this)">
+                    </div>
                     <div>
                         <input type="button" name="mode" onclick="toggleMode(this)">
                     </div>

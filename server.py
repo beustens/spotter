@@ -124,6 +124,10 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                             'threshold': spotter.thresh, 
                             'average': spotter.nSlotFrames, 
                             'showdiff': spotter.showDiff, 
+                            'ringswidth': spotter.mirrorScale[0]*100, 
+                            'ringsheight': spotter.mirrorScale[1]*100, 
+                            'ringsleft': spotter.mirrorTranslate[0], 
+                            'ringstop': spotter.mirrorTranslate[1], 
                             'mode': 'Start' if spotter.state == State.PREVIEW else 'Stop'
                         }
                         # send data
@@ -233,6 +237,18 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
             elif param == 'showdiff':
                 # show normal or diff image
                 spotter.showDiff = value
+            elif param == 'ringswidth':
+                # scale mirror in x
+                spotter.mirrorScale[0] = float(value)/100
+            elif param == 'ringsheight':
+                # scale mirror in y
+                spotter.mirrorScale[1] = float(value)/100
+            elif param == 'ringsleft':
+                # move mirror in x
+                spotter.mirrorTranslate[0] = int(value)
+            elif param == 'ringstop':
+                # move mirror in y
+                spotter.mirrorTranslate[1] = int(value)
             
             # update settings for all clients
             for k in updateSettings:
