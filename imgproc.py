@@ -9,6 +9,7 @@ from scipy import ndimage # for image processing
 from PIL import Image # to convert array to image
 import time # for performance measurement
 from enum import Enum # for states
+from collections import deque # for fast ring buffer
 import logging # for more advanced prints
 
 
@@ -23,9 +24,6 @@ class State(Enum):
 
 
 class FrameAnalysis(PiYUVAnalysis):
-
-    MAX_SLOTS = 3
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # general
@@ -37,13 +35,15 @@ class FrameAnalysis(PiYUVAnalysis):
         self.state = State.PREVIEW # do not average and detect changes yet
 
         # mirror detection related
-        self.pickScaleDims = (1., 1.) # scale correction factors for picked size
+        self.mirrorScale = [1., 1.] # scale corrections of mirror bounds
+        self.mirrorTranslate = [0, 0] # position corrections of mirror bounds
         self.mirrorTolerance = 15 # tolerance to find mirror pixels from center luminance
         self.mirrorPickSize = 10 # center size (width and height) in pixels to pick luminance
         self.paperScale = 3. # overall paper is that much larger than mirror
 
         # slot related
-        self.nSlotFrames = 5 # number of frames to average
+        self.maxSlots = 3 # number of slots
+        self.nSlotFrames = 10 # number of frames to average
 
         # hole detection related
         self.thresh = 5 # hole detection sensitivity
@@ -62,10 +62,10 @@ class FrameAnalysis(PiYUVAnalysis):
         self.cropBounds = None
         self.mirrorBounds = None
         self.slot = Slot()
-        self.slots = []
+        self.slots = deque(maxlen=self.maxSlots)
         self.analysis = None # last analysis
         self.detected = []
-        self.marks = []
+        self.marks = deque(maxlen=self.maxMarks)
     
 
     def analyse(self, img):
@@ -175,7 +175,7 @@ class FrameAnalysis(PiYUVAnalysis):
         '''
         Corrected mirror bounds in cropped frame
         '''
-        return self.mirrorBounds.scaled(self.pickScaleDims)
+        return self.mirrorBounds.scaled(self.mirrorScale).moved(*self.mirrorTranslate)
     
 
     def cycleSlots(self, slot):
@@ -185,10 +185,10 @@ class FrameAnalysis(PiYUVAnalysis):
         :param slot: Slot object
         :returns: True if all slots filled, False otherwise
         '''
-        self.slots.insert(0, slot) # store current slot
+        self.slots.appendleft(slot) # insert current slot
         self.slot = Slot() # reset current slot
-        if len(self.slots) > self.MAX_SLOTS:
-            self.slots.pop(-1) # delete oldest slot
+        # check if full
+        if len(self.slots) == self.slots.maxlen:
             return True
         else:
             return False
@@ -200,9 +200,7 @@ class FrameAnalysis(PiYUVAnalysis):
 
         :param pos: tuple of (left, top) pixel matrix indices
         '''
-        self.marks.insert(0, pos)
-        if len(self.marks) > self.maxMarks:
-            self.marks.pop(-1)
+        self.marks.appendleft(pos)
     
 
     def imgArrayToImgBytes(self, img, filetype='jpeg'):
