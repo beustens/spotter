@@ -19,10 +19,14 @@
             </div>
             <div class="side">
                 <h2>Settings</h2>
+                <h3>Camera</h3>
                 <div class="paramlist">
                     <div>
                         Contrast: <input type="number" name="contrast" min="-100" max="100" step="1" onchange="enterParam(this)">
                     </div>
+                </div>
+                <h3>Detection</h3>
+                <div class="paramlist">
                     <div>
                         Sensitivity: <input type="number" name="threshold" min="0" max="255" step="1" onchange="enterParam(this)">
                     </div>
@@ -30,14 +34,19 @@
                         Average: <input type="number" name="average" min="1" max="30" step="1" onchange="enterParam(this)">
                     </div>
                     <div>
-                        Show difference: <input type="checkbox" name="showdiff" onclick="toggleView(this)">
+                        Show difference: <input type="checkbox" name="showdiff" onclick="enterParam(this)">
                     </div>
-                    <p>Ring corrections</p>
+                </div>
+                <h3>Ring corrections</h3>
+                <div class="paramlist">
                     <div>
                         width: <input type="number" name="ringswidth" onchange="enterParam(this)"><span>height: </span><input type="number" name="ringsheight" onchange="enterParam(this)">
                     </div>
                     <div>
                         left: <input type="number" name="ringsleft" step="1" onchange="enterParam(this)"><span>top: </span><input type="number" name="ringstop" step="1" onchange="enterParam(this)">
+                    </div>
+                    <div>
+                        Save for next start: <input type="checkbox" name="saverings" onclick="enterParam(this)">
                     </div>
                     <div>
                         <input type="button" name="mode" onclick="toggleMode(this)">
