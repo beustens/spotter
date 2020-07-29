@@ -35,11 +35,10 @@ class FrameAnalysis(PiYUVAnalysis):
         self.state = State.PREVIEW # do not average and detect changes yet
 
         # mirror detection related
-        self.mirrorScale = [1., 1.] # scale corrections of mirror bounds
-        self.mirrorTranslate = [0, 0] # position corrections of mirror bounds
         self.mirrorTolerance = 15 # tolerance to find mirror pixels from center luminance
         self.mirrorPickSize = 10 # center size (width and height) in pixels to pick luminance
         self.paperScale = 3. # overall paper is that much larger than mirror
+        self.keepMirror = False
 
         # slot related
         self.maxSlots = 3 # number of slots
@@ -59,8 +58,11 @@ class FrameAnalysis(PiYUVAnalysis):
         '''
         Resets analysis results
         '''
-        self.cropBounds = None
-        self.mirrorBounds = None
+        if not self.keepMirror:
+            self.cropBounds = None
+            self.mirrorBounds = None
+            self.mirrorScale = (1., 1.) # scale corrections of mirror bounds
+            self.mirrorTranslate = (0, 0) # position corrections of mirror bounds
         self.slot = Slot()
         self.slots = deque(maxlen=self.maxSlots)
         self.analysis = None # last analysis
@@ -175,7 +177,10 @@ class FrameAnalysis(PiYUVAnalysis):
         '''
         Corrected mirror bounds in cropped frame
         '''
-        return self.mirrorBounds.scaled(self.mirrorScale).moved(*self.mirrorTranslate)
+        if self.mirrorBounds:
+            return self.mirrorBounds.scaled(self.mirrorScale).moved(*self.mirrorTranslate)
+        else:
+            return None
     
 
     def cycleSlots(self, slot):
@@ -276,7 +281,7 @@ class Rect:
         self.bottom = yMax
     
 
-    def __repr__(self):
+    def __str__(self):
         return f'Rect(left: {self.left}, right: {self.right}, top: {self.top}, bottom: {self.bottom})'
     
 
@@ -376,6 +381,7 @@ class Analysis:
         :param maxSize: maximum width/height of difference detection area in pixel
         '''
         self.valid = False
+        self.result = ''
         
         # mask
         diff = newSlot.mean-oldSlot.mean
@@ -397,13 +403,13 @@ class Analysis:
             # check valid size
             if self.rect.width < maxSize and self.rect.height < maxSize:
                 self.valid = True
+                self.result = 'valid change'
             else:
                 log.info('Too many pixels changed')
+                self.result = 'too much change'
+        else:
+            self.result = 'no change'
     
 
-    def __repr__(self):
-        s = f'Analysis({"valid" if self.valid else "invalid"} change'
-        if self.valid:
-            s += f', {self.rect.width}w x {self.rect.height}h'
-        s += ')'
-        return s
+    def __str__(self):
+        return f'Analysis({self.result})'

@@ -6,7 +6,7 @@ window.post = function(url, data) {
 function enterParam(paramElement) {
     // entering values via input elements
     let paramKey = paramElement.name;
-    let paramVal = paramElement.value;
+    let paramVal = (paramElement.type == "checkbox" ? paramElement.checked : paramElement.value);
     
     // send to server
     post("/setting", {param: paramKey, value: paramVal});
@@ -53,25 +53,6 @@ stateSource.onmessage = function(event) {
         pickerEle.style.display = "none";
     }
 
-    // configure rings
-    const ringsEle = document.getElementById("rings");
-    ringsEle.innerHTML = "";
-    // insert marks in container
-    if ("ringsizes" in data) {
-        for (const size of data.ringsizes) {
-            // create ring element
-            const ringEle = document.createElement("div");
-            ringEle.classList.add("overlay");
-            ringEle.classList.add("circle");
-            ringEle.style.width = size.width+"%";
-            ringEle.style.height = size.height+"%";
-            ringEle.style.top = size.top+"%";
-            ringEle.style.left = size.left+"%";
-            // add ring to container
-            ringsEle.appendChild(ringEle);
-        }
-    }
-
     // configure message
     const msgEle = document.getElementById("message");
     if (data.state === "COLLECT") {
@@ -95,6 +76,30 @@ settingsSource.onmessage = function(event) {
         }
     }
 }
+
+const ringsSource = new EventSource("/rings");
+ringsSource.onmessage = function(event) {
+    const data = JSON.parse(event.data); // parse dictionary
+
+    // configure rings
+    const ringsEle = document.getElementById("rings");
+    ringsEle.innerHTML = "";
+    // insert marks in container
+    if ("ringsizes" in data) {
+        for (const size of data.ringsizes) {
+            // create ring element
+            const ringEle = document.createElement("div");
+            ringEle.classList.add("overlay");
+            ringEle.classList.add("circle");
+            ringEle.style.width = size.width+"%";
+            ringEle.style.height = size.height+"%";
+            ringEle.style.top = size.top+"%";
+            ringEle.style.left = size.left+"%";
+            // add ring to container
+            ringsEle.appendChild(ringEle);
+        }
+    }
+};
 
 const marksSource = new EventSource("/marks");
 marksSource.onmessage = function(event) {
@@ -128,10 +133,4 @@ function toggleMode(btnElement) {
         post("/setting", {param: "mode", value: "preview"});
         btnElement.value = "Start"
     }
-}
-
-
-function toggleView(checkElement) {
-    // switch between normal view and differences between frames
-    post("/setting", {param: "showdiff", value: checkElement.checked});
 }

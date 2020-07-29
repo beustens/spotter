@@ -25,6 +25,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
         self.oldStreamImage = None
         self.oldState = None
         self.oldFrameCnt = None
+        self.oldMirror = None
         self.oldMarks = None
         super().__init__(*args, directory='html', **kwargs)
     
@@ -80,6 +81,21 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(data).encode('utf-8'))
     
+
+    def eventLoop(self, callback):
+        '''
+        Setups a server side event loop
+
+        :param callback: function to call in loop
+        '''
+        self.sendEventStreamHeader()
+        try:
+            while True:
+                callback()
+                time.sleep(0.01) # reduce idle load
+        except BrokenPipeError:
+            log.info(f'Removed streaming client {self.client_address}')
+    
     
     def do_GET(self):
         '''
@@ -109,99 +125,94 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
             except BrokenPipeError:
                 log.info(f'Removed streaming client {self.client_address}')
         elif '/settings' in self.path:
-            # push settings into clients input fields
-            self.sendEventStreamHeader()
-            try:
-                while True:
-                    ip = self.client_address[0]
-                    # init update state for each client
-                    if ip not in updateSettings:
-                        updateSettings[ip] = True
-                    # pack settings
-                    if updateSettings[ip]:
-                        data = {
-                            'contrast': camera.contrast, 
-                            'threshold': spotter.thresh, 
-                            'average': spotter.nSlotFrames, 
-                            'showdiff': spotter.showDiff, 
-                            'ringswidth': spotter.mirrorScale[0]*100, 
-                            'ringsheight': spotter.mirrorScale[1]*100, 
-                            'ringsleft': spotter.mirrorTranslate[0], 
-                            'ringstop': spotter.mirrorTranslate[1], 
-                            'mode': 'Start' if spotter.state == State.PREVIEW else 'Stop'
-                        }
-                        # send data
-                        self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
-                        updateSettings[ip] = False
-
-                    time.sleep(0.1) # reduce idle load
-            except BrokenPipeError:
-                log.info(f'Removed streaming client {self.client_address}')
+            self.eventLoop(self.settingsEvent)
         elif '/infos' in self.path:
-            # send event after processed frame from camera
-            self.sendEventStreamHeader()
-            try:
-                while True:
-                    if self.oldFrameCnt != spotter.frameCnt:
-                        # get debug infos
-                        data = {
-                            'Processing time': f'{(spotter.procTime*1e3):.2f} ms', 
-                            'Exposure time': f'{(camera.exposure_speed/1e3):.2f} ms', 
-                            'Frames in slot': f'{spotter.slot.length}/{spotter.nSlotFrames}', 
-                            'Last analysis': '--' if spotter.analysis is None else str(spotter.analysis)
-                        }
-                        # send data
-                        self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
-                        self.oldFrameCnt = spotter.frameCnt
-                    
-                    time.sleep(0.01) # reduce idle load
-            except BrokenPipeError:
-                log.info(f'Removed streaming client {self.client_address}')
+            self.eventLoop(self.infosEvent)
         elif '/state' in self.path:
-            # state change
-            self.sendEventStreamHeader()
-            try:
-                while True:
-                    if self.oldState != spotter.state:
-                        data = {'state': str(spotter.state).split('.')[1]}
-                        
-                        # put in mirror picker size
-                        if spotter.state == State.PREVIEW:
-                            picker = {
-                                'width': 100*spotter.mirrorPickSize/camera.resolution[0], 
-                                'height': 100*spotter.mirrorPickSize/camera.resolution[1]
-                            }
-                            data.update({'pickersize': picker})
-
-                        # put in mirror coordinates in percent to stream
-                        if spotter.state == State.DETECT and spotter.mirrorBounds:
-                            rings = [self.rectPercent(ring) for ring in self.target.getRingBounds(spotter.mirrorBounds)]
-                            data.update({'ringsizes': rings})
-
-                        # send data
-                        self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
-                        self.oldState = spotter.state
-                    
-                    time.sleep(0.1) # reduce idle load
-            except BrokenPipeError:
-                log.info(f'Removed streaming client {self.client_address}')
+            self.eventLoop(self.stateEvent)
+        elif '/rings' in self.path:
+            self.eventLoop(self.ringsEvent)
         elif '/marks' in self.path:
-            # marks change
-            self.sendEventStreamHeader()
-            try:
-                while True:
-                    marksHash = hash(tuple(spotter.marks)) # to detect changed mark list
-                    if self.oldMarks != marksHash:
-                        data = [self.pointPercent(mark) for mark in spotter.marks]
-                        # send data
-                        self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
-                        self.oldMarks = marksHash
-                    
-                    time.sleep(0.1) # reduce idle load
-            except BrokenPipeError:
-                log.info(f'Removed streaming client {self.client_address}')
+            self.eventLoop(self.marksEvent)
         else:
             super().do_GET()
+    
+
+    def settingsEvent(self):
+        ip = self.client_address[0]
+        # init update state for each client
+        if ip not in updateSettings:
+            updateSettings[ip] = True
+        # pack settings
+        if updateSettings[ip]:
+            data = {
+                'contrast': camera.contrast, 
+                'threshold': spotter.thresh, 
+                'average': spotter.nSlotFrames, 
+                'showdiff': spotter.showDiff, 
+                'ringswidth': spotter.mirrorScale[0]*100, 
+                'ringsheight': spotter.mirrorScale[1]*100, 
+                'ringsleft': spotter.mirrorTranslate[0], 
+                'ringstop': spotter.mirrorTranslate[1], 
+                'mode': 'Start' if spotter.state == State.PREVIEW else 'Stop'
+            }
+            # send data
+            self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
+            updateSettings[ip] = False
+    
+
+    def infosEvent(self):
+        if self.oldFrameCnt != spotter.frameCnt:
+            # get debug infos
+            data = {
+                'Processing time': f'{(spotter.procTime*1e3):.2f} ms', 
+                'Exposure time': f'{(camera.exposure_speed/1e3):.2f} ms', 
+                'Frames in slot': f'{spotter.slot.length}/{spotter.nSlotFrames}', 
+                'Last analysis': '--' if spotter.analysis is None else str(spotter.analysis)
+            }
+            # send data
+            self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
+            self.oldFrameCnt = spotter.frameCnt
+    
+
+    def stateEvent(self):
+        if self.oldState != spotter.state:
+            data = {'state': str(spotter.state).split('.')[1]}
+            
+            # put in mirror picker size
+            if spotter.state == State.PREVIEW:
+                picker = {
+                    'width': 100*spotter.mirrorPickSize/camera.resolution[0], 
+                    'height': 100*spotter.mirrorPickSize/camera.resolution[1]
+                }
+                data.update({'pickersize': picker})
+
+            # send data
+            self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
+            self.oldState = spotter.state
+    
+
+    def ringsEvent(self):
+        newMirror = spotter.corrMirrorBounds
+        if self.oldMirror != newMirror:
+            data = {}
+            # corrected mirror coordinates in percent to stream
+            if newMirror and spotter.state == State.DETECT:
+                rings = [self.rectPercent(ring) for ring in self.target.getRingBounds(newMirror)]
+                data.update({'ringsizes': rings})
+
+            # send data
+            self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
+            self.oldMirror = newMirror
+    
+
+    def marksEvent(self):
+        marksHash = hash(tuple(spotter.marks)) # to detect changed mark list
+        if self.oldMarks != marksHash:
+            data = [self.pointPercent(mark) for mark in spotter.marks]
+            # send data
+            self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
+            self.oldMarks = marksHash
     
 
     def do_POST(self):
@@ -239,16 +250,19 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                 spotter.showDiff = value
             elif param == 'ringswidth':
                 # scale mirror in x
-                spotter.mirrorScale[0] = float(value)/100
+                spotter.mirrorScale = (float(value)/100, spotter.mirrorScale[1])
             elif param == 'ringsheight':
                 # scale mirror in y
-                spotter.mirrorScale[1] = float(value)/100
+                spotter.mirrorScale = (spotter.mirrorScale[0], float(value)/100)
             elif param == 'ringsleft':
                 # move mirror in x
-                spotter.mirrorTranslate[0] = int(value)
+                spotter.mirrorTranslate = (int(value), spotter.mirrorTranslate[1])
             elif param == 'ringstop':
                 # move mirror in y
-                spotter.mirrorTranslate[1] = int(value)
+                spotter.mirrorTranslate = (spotter.mirrorTranslate[0], int(value))
+            elif param == 'saverings':
+                # check if mirror rings and related settings should reset at start
+                spotter.keepMirror = value
             
             # update settings for all clients
             for k in updateSettings:
