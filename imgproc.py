@@ -79,7 +79,6 @@ class FrameAnalysis(PiYUVAnalysis):
 
         # convert camera image to grayscale frame matrix
         frame = img[:, :, 0] # get luminance channel of YUV
-        frame = frame.astype(np.int16)
 
         if self.state == State.PREVIEW:
             # in preview state, reset analysis results and output uncropped frame
@@ -99,6 +98,7 @@ class FrameAnalysis(PiYUVAnalysis):
             # COLLECT or DETECT state
             # crop frame
             frame = self.crop(frame, self.cropBounds)
+            frame = frame.astype(np.int16)
             # add frame to current slot
             log.debug(f'Adding frame {self.slot.length+1}/{self.nSlotFrames} to slot')
             self.slot.add(frame)
