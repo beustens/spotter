@@ -116,8 +116,6 @@ class FrameAnalysis(PiYUVAnalysis):
                         log.info(f'Valid change detected at {self.analysis.rect.center}')
                         # add detection to mark consideration
                         self.detected.append(self.analysis.rect.center)
-                        # debug display
-                        display[self.analysis.mask] = 255
                     else:
                         # add mark of detection
                         if self.detected:
@@ -125,7 +123,8 @@ class FrameAnalysis(PiYUVAnalysis):
                             self.cycleMarks(self.detected[0])
                         self.detected = []
                     
-                    # TODO: parallel to above processing, convert frame to image
+                    # debug display
+                    display[self.analysis.mask] = 255
                     self.makeStreamImage(display)
         
         self.procTime = time.perf_counter()-startTime
