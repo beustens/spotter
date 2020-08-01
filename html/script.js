@@ -95,6 +95,7 @@ ringsSource.onmessage = function(event) {
             ringEle.style.height = size.height+"%";
             ringEle.style.top = size.top+"%";
             ringEle.style.left = size.left+"%";
+            ringEle.style.pointerEvents = "none"; // do not block mouse clicks
             // add ring to container
             ringsEle.appendChild(ringEle);
         }
