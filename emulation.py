@@ -28,7 +28,7 @@ class Emulator:
     Note: Does not support original features
     '''
     def __init__(self):
-        self.resolution = (1280, 720)
+        self.resolution = (1920, 1080)
         self.normContrast = 1. # 0...2
         self.normBrightness = 1. # 0...2
         self.fakeFPS = 15
@@ -204,7 +204,8 @@ class ArtificialPiCamera(Emulator):
         img += noise
 
         # apply contrast and brightness
-        img = (img*self.normBrightness-0.5)*self.normContrast+0.5
+        img *= self.normBrightness
+        img = (img-0.5)*self.normContrast+0.5
 
         # convert to image tensor
         img *= 255 # denormalize

@@ -286,7 +286,7 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
 if __name__ == '__main__':
     with PiCamera() as camera:
         log.debug('Adjusting camera settings')
-        camera.resolution = (1280, 720)#(1920, 1080)
+        camera.resolution = (1920, 1080)
         camera.meter_mode = 'spot'
         camera.contrast = 0
         camera.framerate_range = (0.1, 30)
