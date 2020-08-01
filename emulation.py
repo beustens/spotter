@@ -30,7 +30,7 @@ class Emulator:
     def __init__(self):
         self.resolution = (1280, 720)
         self.normContrast = 1. # 0...2
-        self.normBrightness = 0. # 0...2
+        self.normBrightness = 1. # 0...2
         self.fakeFPS = 15
         self.exposure_speed = 1e6/self.fakeFPS
         self.thread = None
