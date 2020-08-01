@@ -3,7 +3,11 @@ import numpy as np # for image generation
 from scipy import ndimage # for image processing
 import threading # for non-blocking execution
 import time # for waiting to generate next image
-import cv2 # for grabbing images from video
+try:
+    import cv2 # for grabbing images from video
+except ImportError:
+    pass
+
 import argparse # for getting arguments when calling script
 
 
