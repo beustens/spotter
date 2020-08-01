@@ -98,7 +98,7 @@ class FrameAnalysis(PiYUVAnalysis):
             # COLLECT or DETECT state
             # crop frame
             frame = self.crop(frame, self.cropBounds)
-            frame = frame.astype(np.int16)
+            frame = frame.astype(np.int16, copy=False)
             # add frame to current slot
             log.debug(f'Adding frame {self.slot.length+1}/{self.nSlotFrames} to slot')
             self.slot.add(frame)
@@ -388,7 +388,6 @@ class Analysis:
         log.debug(f'diff min: {diff.min()}, max: {diff.max()}, threshold: {-thresh}')
         self.diff = ndimage.gaussian_filter(diff, 2) # to eliminate outliers
         self.mask = self.diff < -thresh
-        #mask = ndimage.binary_erosion(mask).astype(mask.dtype) # erode mask to eliminate outliers
         iMask = np.argwhere(self.mask )
         nChange = len(iMask)
         if nChange > 0:
