@@ -66,7 +66,7 @@ class Emulator:
 
     @brightness.setter
     def brightness(self, val):
-        self.normBrightness = val/50
+        self.normBrightness = val/50.
     
 
     @property
@@ -204,7 +204,7 @@ class ArtificialPiCamera(Emulator):
         img += noise
 
         # apply contrast and brightness
-        img = (img*self.brightness-0.5)*self.normContrast+0.5
+        img = (img*self.normBrightness-0.5)*self.normContrast+0.5
 
         # convert to image tensor
         img *= 255 # denormalize
