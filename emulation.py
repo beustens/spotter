@@ -118,7 +118,7 @@ class ArtificialPiCamera(Emulator):
         self.mirrorRatio = 0.1 # radius as ratio to image width
         self.paperSize = 3*self.mirrorRatio
         self.holeRatio = 0.005 # radius as ratio to image with
-        self.holePeriod = 3. # generate every x seconds a new hole
+        self.holePeriod = 4. # generate every x seconds a new hole
         self.holeTime = time.time()+10. # start hole generation in y seconds
         self.makeCoords()
         self.baseImage = self.generateBaseImage()
@@ -181,8 +181,8 @@ class ArtificialPiCamera(Emulator):
         # low pass filter a bit
         img = ndimage.gaussian_filter(img, 3)
         # add rough noise
-        noise = np.random.normal(scale=0.03, size=(self.height, self.width))
-        noise = ndimage.gaussian_filter(noise, 5)
+        noise = np.random.normal(scale=0.05, size=(self.height, self.width))
+        noise = ndimage.gaussian_filter(noise, 4)
         img += noise
         # add fine noise
         noise = np.random.normal(scale=0.02, size=(self.height, self.width))
