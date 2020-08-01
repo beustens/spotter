@@ -30,6 +30,7 @@ class Emulator:
     def __init__(self):
         self.resolution = (1280, 720)
         self.normContrast = 1. # 0...2
+        self.normBrightness = 0. # 0...2
         self.fakeFPS = 15
         self.exposure_speed = 1e6/self.fakeFPS
         self.thread = None
@@ -56,6 +57,16 @@ class Emulator:
     @contrast.setter
     def contrast(self, val):
         self.normContrast = val/100.+1.
+    
+
+    @property
+    def brightness(self):
+        return int(50*self.normBrightness)
+    
+
+    @brightness.setter
+    def brightness(self, val):
+        self.normBrightness = val/50
     
 
     @property
@@ -192,8 +203,8 @@ class ArtificialPiCamera(Emulator):
         noise = np.random.normal(scale=0.02, size=(self.height, self.width))
         img += noise
 
-        # apply contrast
-        img = (img-0.5)*self.normContrast+0.5
+        # apply contrast and brightness
+        img = (img*self.brightness-0.5)*self.normContrast+0.5
 
         # convert to image tensor
         img *= 255 # denormalize
