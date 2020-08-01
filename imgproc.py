@@ -30,6 +30,7 @@ class FrameAnalysis(PiYUVAnalysis):
         self.frameCnt = 0
         self.streamDims = self.camera.resolution # width, height in pixels of current background
         self.streamImage = bytes()
+        self.halfPreviewRes = True # cutting preview stream image resolution to save time
         self.procTime = 0.
         self.showDiff = False # show amplified diff instead of the camera frames
         self.state = State.PREVIEW # do not average and detect changes yet
@@ -83,7 +84,7 @@ class FrameAnalysis(PiYUVAnalysis):
         if self.state == State.PREVIEW:
             # in preview state, reset analysis results and output uncropped frame
             self.reset()
-            self.makeStreamImage(frame[::2, ::2])
+            self.makeStreamImage(frame[::2, ::2] if self.halfPreviewRes else frame)
         elif self.state == State.START:
             # detect mirror
             log.info('Detecting mirror')
