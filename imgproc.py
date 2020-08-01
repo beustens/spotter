@@ -83,7 +83,7 @@ class FrameAnalysis(PiYUVAnalysis):
         if self.state == State.PREVIEW:
             # in preview state, reset analysis results and output uncropped frame
             self.reset()
-            self.makeStreamImage(frame)
+            self.makeStreamImage(frame[::2, ::2])
         elif self.state == State.START:
             # detect mirror
             log.info('Detecting mirror')
@@ -384,7 +384,6 @@ class Analysis:
         
         # mask
         diff = newSlot.mean-oldSlot.mean
-        log.debug(f'diff min: {diff.min()}, max: {diff.max()}, threshold: {-thresh}')
         self.diff = ndimage.gaussian_filter(diff, 2) # to eliminate outliers
         self.mask = self.diff < -thresh
         iMask = np.argwhere(self.mask )
