@@ -147,6 +147,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
         if updateSettings[ip]:
             data = {
                 'contrast': camera.contrast, 
+                'brightness': camera.brightness, 
                 'threshold': spotter.thresh, 
                 'average': spotter.nSlotFrames, 
                 'showdiff': spotter.showDiff, 
@@ -232,6 +233,9 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
             if param == 'contrast':
                 # set camera contrast
                 camera.contrast = int(value)
+            elif param == 'brightness':
+                # set camera brightness
+                camera.brightness = int(value)
             elif param == 'threshold':
                 # set difference detection threshold
                 spotter.thresh = int(value)
