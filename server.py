@@ -92,7 +92,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
         try:
             while True:
                 callback()
-                time.sleep(0.01) # reduce idle load
+                time.sleep(0.25) # reduce idle load
         except BrokenPipeError:
             log.info(f'Removed streaming client {self.client_address}')
     
@@ -121,7 +121,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                         self.wfile.write(b'\n\n')
                         self.oldStreamImage = spotter.streamImage
                     
-                    time.sleep(0.01) # reduce idle load
+                    time.sleep(0.05) # reduce idle load
             except BrokenPipeError:
                 log.info(f'Removed streaming client {self.client_address}')
         elif '/settings' in self.path:
