@@ -69,33 +69,6 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
         self.send_header('Content-type', 'text/event-stream')
         self.end_headers()
     
-
-    def sendDict(self, data):
-        '''
-        Sends a dictionary as JSON
-
-        :param data: dictionary
-        '''
-        self.send_response(200)
-        self.send_header('Content-type', 'application/json')
-        self.end_headers()
-        self.wfile.write(json.dumps(data).encode('utf-8'))
-    
-
-    def eventLoop(self, callback):
-        '''
-        Setups a server side event loop
-
-        :param callback: function to call in loop
-        '''
-        self.sendEventStreamHeader()
-        try:
-            while True:
-                callback()
-                time.sleep(0.25) # reduce idle load
-        except BrokenPipeError:
-            log.info(f'Removed streaming client {self.client_address}')
-    
     
     def do_GET(self):
         '''
@@ -124,21 +97,26 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                     time.sleep(0.05) # reduce idle load
             except BrokenPipeError:
                 log.info(f'Removed streaming client {self.client_address}')
-        elif '/settings' in self.path:
-            self.eventLoop(self.settingsEvent)
-        elif '/update' in self.path:
-            self.eventLoop(self.updateEvent)
-        elif '/state' in self.path:
-            self.eventLoop(self.stateEvent)
-        elif '/rings' in self.path:
-            self.eventLoop(self.ringsEvent)
-        elif '/marks' in self.path:
-            self.eventLoop(self.marksEvent)
+        elif '/change' in self.path:
+            self.sendEventStreamHeader()
+            try:
+                while True:
+                    data = {}
+                    self.settingsEvent(data)
+                    self.updateEvent(data)
+                    self.stateEvent(data)
+                    self.ringsEvent(data)
+                    self.marksEvent(data)
+                    # send data to client
+                    self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
+                    time.sleep(0.25) # reduce idle load
+            except BrokenPipeError:
+                log.info(f'Removed streaming client {self.client_address}')
         else:
             super().do_GET()
     
 
-    def settingsEvent(self):
+    def settingsEvent(self, eventData):
         ip = self.client_address[0]
         # init update state for each client
         if ip not in updateSettings:
@@ -155,14 +133,14 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                 'ringsheight': spotter.mirrorScale[1]*100, 
                 'ringsleft': spotter.mirrorTranslate[0], 
                 'ringstop': spotter.mirrorTranslate[1], 
+                'saverings': spotter.keepMirror, 
                 'mode': 'Start' if spotter.state == State.PREVIEW else 'Stop'
             }
-            # send data
-            self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
+            eventData.update({'settings': data})
             updateSettings[ip] = False
     
 
-    def updateEvent(self):
+    def updateEvent(self, eventData):
         if self.oldFrameCnt != spotter.frameCnt:
             data = {}
             # get debug infos
@@ -185,12 +163,11 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                 progress = curCollect/maxCollect
                 data.update({'progress': 100*progress})
             
-            # send data
-            self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
+            eventData.update({'update': data})
             self.oldFrameCnt = spotter.frameCnt
     
 
-    def stateEvent(self):
+    def stateEvent(self, eventData):
         if self.oldState != spotter.state:
             data = {'state': str(spotter.state).split('.')[1]}
             
@@ -201,32 +178,27 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                     'height': 100*spotter.mirrorPickSize/camera.resolution[1]
                 }
                 data.update({'pickersize': picker})
-
-            # send data
-            self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
+            
+            eventData.update({'state': data})
             self.oldState = spotter.state
     
 
-    def ringsEvent(self):
+    def ringsEvent(self, eventData):
         newMirror = spotter.corrMirrorBounds
         if self.oldMirror != newMirror:
-            data = {}
             # corrected mirror coordinates in percent to stream
             if newMirror and spotter.state == State.DETECT:
                 rings = [self.rectPercent(ring) for ring in self.target.getRingBounds(newMirror)]
-                data.update({'ringsizes': rings})
-
-            # send data
-            self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
+                eventData.update({'rings': rings})
+            
             self.oldMirror = newMirror
     
 
-    def marksEvent(self):
+    def marksEvent(self, eventData):
         marksHash = hash(tuple(spotter.marks)) # to detect changed mark list
         if self.oldMarks != marksHash:
             data = [self.pointPercent(mark) for mark in spotter.marks]
-            # send data
-            self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
+            eventData.update({'marks': data})
             self.oldMarks = marksHash
     
 

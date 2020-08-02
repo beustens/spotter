@@ -6,7 +6,7 @@ window.post = function(url, data) {
 function enterParam(paramElement) {
     // entering values via input elements
     let paramKey = paramElement.name;
-    let paramVal = (paramElement.type == "checkbox" ? paramElement.checked : paramElement.value);
+    let paramVal = ((paramElement.type == "checkbox") ? paramElement.checked : paramElement.value);
     
     // send to server
     post("/setting", {param: paramKey, value: paramVal});
@@ -14,10 +14,36 @@ function enterParam(paramElement) {
 
 
 // listen to server side event (server updates un-requested)
-const infoSource = new EventSource("/update");
-infoSource.onmessage = function(event) {
+const changeSource = new EventSource("/change");
+changeSource.onmessage = function(event) {
     const data = JSON.parse(event.data); // parse dictionary
-    
+    parseSettings(data.settings);
+    parseUpdate(data.update);
+    parseState(data.state);
+    parseRings(data.rings);
+    parseMarks(data.marks);
+}
+
+
+function parseSettings(data) {
+    if (data == undefined) return;
+
+    // insert parameters in inputs
+    for (const inputEle of document.getElementsByTagName("input")) {
+        if (inputEle.name in data) {
+            if (inputEle.type == "checkbox") {
+                inputEle.checked = data[inputEle.name];
+            } else {
+                inputEle.value = data[inputEle.name];
+            }
+        }
+    }
+}
+
+
+function parseUpdate(data) {
+    if (data == undefined) return;
+
     // display debug infos
     const infosEle = document.getElementById("infos");
     infosEle.innerHTML = "";
@@ -43,17 +69,17 @@ infoSource.onmessage = function(event) {
     } else {
         progressEle.parentElement.style.display = "none";
     }
-};
+}
 
-const stateSource = new EventSource("/state");
-stateSource.onmessage = function(event) {
-    const data = JSON.parse(event.data); // parse dictionary
+
+function parseState(data) {
+    if (data == undefined) return;
 
     // configure mirror picker overlay
     const pickerEle = document.getElementById("picker");
-    if ("pickersize" in data) {
+    const size = data.pickersize;
+    if (size != undefined) {
         // in preview state, display picker and set size
-        const size = data.pickersize;
         pickerEle.style.width = size.width+"%";
         pickerEle.style.height = size.height+"%";
         pickerEle.style.display = "block";
@@ -71,52 +97,38 @@ stateSource.onmessage = function(event) {
     }
 };
 
-const settingsSource = new EventSource("/settings");
-settingsSource.onmessage = function(event) {
-    const data = JSON.parse(event.data); // parse dictionary
-    // insert parameters in inputs
-    for (const inputEle of document.getElementsByTagName("input")) {
-        if (inputEle.name in data) {
-            if (inputEle.type == "checkbox") {
-                inputEle.checked = data[inputEle.name];
-            } else {
-                inputEle.value = data[inputEle.name];
-            }
-        }
-    }
-}
 
-const ringsSource = new EventSource("/rings");
-ringsSource.onmessage = function(event) {
-    const data = JSON.parse(event.data); // parse dictionary
-
+function parseRings(data) {
     // configure rings
     const ringsEle = document.getElementById("rings");
     ringsEle.innerHTML = "";
+
+    if (data == undefined) return;
+    
     // insert marks in container
-    if ("ringsizes" in data) {
-        for (const size of data.ringsizes) {
-            // create ring element
-            const ringEle = document.createElement("div");
-            ringEle.classList.add("overlay");
-            ringEle.classList.add("circle");
-            ringEle.style.width = size.width+"%";
-            ringEle.style.height = size.height+"%";
-            ringEle.style.top = size.top+"%";
-            ringEle.style.left = size.left+"%";
-            ringEle.style.pointerEvents = "none"; // do not block mouse clicks
-            // add ring to container
-            ringsEle.appendChild(ringEle);
-        }
+    for (const size of data) {
+        // create ring element
+        const ringEle = document.createElement("div");
+        ringEle.classList.add("overlay");
+        ringEle.classList.add("circle");
+        ringEle.style.width = size.width+"%";
+        ringEle.style.height = size.height+"%";
+        ringEle.style.top = size.top+"%";
+        ringEle.style.left = size.left+"%";
+        ringEle.style.pointerEvents = "none"; // do not block mouse clicks
+        // add ring to container
+        ringsEle.appendChild(ringEle);
     }
 };
 
-const marksSource = new EventSource("/marks");
-marksSource.onmessage = function(event) {
-    const data = JSON.parse(event.data); // parse dictionary
-    
+
+function parseMarks(data) {
+    // configure marks
     const marksEle = document.getElementById("marks");
     marksEle.innerHTML = "";
+
+    if (data == undefined) return;
+
     // insert marks in container
     for (const mark of data) {
         // create mark element
