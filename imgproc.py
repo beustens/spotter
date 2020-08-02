@@ -234,6 +234,7 @@ class FrameAnalysis(PiYUVAnalysis):
             self.streamImage = self.imgArrayToImgBytes(img)
         except SystemError:
             log.warning('Could not create stream image')
+            log.info(f'Image cropping: {self.cropBounds}')
 
 
 class Slot:
