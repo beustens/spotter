@@ -14,14 +14,14 @@ function enterParam(paramElement) {
 
 
 // listen to server side event (server updates un-requested)
-const infoSource = new EventSource("/infos");
+const infoSource = new EventSource("/update");
 infoSource.onmessage = function(event) {
     const data = JSON.parse(event.data); // parse dictionary
     
     // display debug infos
     const infosEle = document.getElementById("infos");
     infosEle.innerHTML = "";
-    for (const [key, val] of Object.entries(data)) {
+    for (const [key, val] of Object.entries(data.infos)) {
         // create info element
         const infoEle = document.createElement("div");
         // add key
@@ -33,6 +33,15 @@ infoSource.onmessage = function(event) {
         infoEle.appendChild(valEle);
         // add info element to infos element
         infosEle.appendChild(infoEle);
+    }
+
+    // display progress
+    const progressEle = document.getElementById("progress");
+    if ("progress" in data) {
+        progressEle.style.width = data.progress+"%";
+        progressEle.parentElement.style.display = "block";
+    } else {
+        progressEle.parentElement.style.display = "none";
     }
 };
 

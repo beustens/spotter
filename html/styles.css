@@ -110,10 +110,23 @@ input[type="button"]:hover {
     transform: translate(-50%, -50%);
 }
 
+.progressbar {
+    height: 0.1em;
+    margin-bottom: 1em;
+    background-color: #f0f0f0;
+}
+
+.progressbar > .overlay {
+    height: 100%;
+    left: 0%;
+    background-color: var(--specialcol);
+}
+
 #message {
     background-color: #ffffff7f;
     padding: 0.5em;
     font-size: 1.5em;
+    border-radius: 0.5em;
 }
 
 input + span {

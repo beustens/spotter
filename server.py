@@ -126,8 +126,8 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                 log.info(f'Removed streaming client {self.client_address}')
         elif '/settings' in self.path:
             self.eventLoop(self.settingsEvent)
-        elif '/infos' in self.path:
-            self.eventLoop(self.infosEvent)
+        elif '/update' in self.path:
+            self.eventLoop(self.updateEvent)
         elif '/state' in self.path:
             self.eventLoop(self.stateEvent)
         elif '/rings' in self.path:
@@ -162,15 +162,29 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
             updateSettings[ip] = False
     
 
-    def infosEvent(self):
+    def updateEvent(self):
         if self.oldFrameCnt != spotter.frameCnt:
+            data = {}
             # get debug infos
-            data = {
+            infos = {
                 'Processing time': f'{(spotter.procTime*1e3):.2f} ms', 
                 'Exposure time': f'{(camera.exposure_speed/1e3):.2f} ms', 
-                'Frames in slot': f'{spotter.slot.length}/{spotter.nSlotFrames}', 
                 'Last analysis': '--' if spotter.analysis is None else str(spotter.analysis)
             }
+            data.update({'infos': infos})
+            
+            # get progress
+            if spotter.state == State.DETECT:
+                # average progress
+                progress = spotter.slot.length/spotter.nSlotFrames
+                data.update({'progress': 100*progress})
+            elif spotter.state == State.COLLECT:
+                # filling slots progress
+                curCollect = spotter.slot.length+sum(slot.length for slot in spotter.slots)
+                maxCollect = spotter.maxSlots*spotter.nSlotFrames
+                progress = curCollect/maxCollect
+                data.update({'progress': 100*progress})
+            
             # send data
             self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
             self.oldFrameCnt = spotter.frameCnt
