@@ -36,8 +36,8 @@ class FrameAnalysis(PiYUVAnalysis):
         self.state = State.PREVIEW # do not average and detect changes yet
 
         # mirror detection related
-        self.mirrorTolerance = 15 # tolerance to find mirror pixels from center luminance
-        self.mirrorPickSize = 10 # center size (width and height) in pixels to pick luminance
+        self.mirrorTolerance = 10 # tolerance to find mirror pixels from center luminance
+        self.mirrorPickSize = 20 # center size (width and height) in pixels to pick luminance
         self.paperScale = 3. # overall paper is that much larger than mirror
         self.keepMirror = False
 
@@ -90,6 +90,9 @@ class FrameAnalysis(PiYUVAnalysis):
             log.info('Detecting mirror')
             pickBounds = self.findMirror(frame)
             log.debug(f'Mirror bounds in camera frame: {pickBounds}')
+            if pickBounds.width == 0 or pickBounds.height == 0:
+                log.error(f'Could not detect mirror correctly')
+                pickBounds = self.artificalMirror()
             self.cropBounds = pickBounds.scaled(self.paperScale).minimized(frame)
             self.mirrorBounds = pickBounds.relativeTo(self.cropBounds)
             # proceed with next state
@@ -153,10 +156,12 @@ class FrameAnalysis(PiYUVAnalysis):
         iRow = int(frame.shape[0]/2) # y
         iCol = int(frame.shape[1]/2) # x
         pad = self.mirrorPickSize//2 # half with/height
-        pickLum = np.mean(frame[iRow-pad:iRow+pad, iCol-pad:iCol+pad], dtype=np.int16)
+        pickArea = frame[iRow-pad:iRow+pad, iCol-pad:iCol+pad]
 
         # mask luminance in frame for picked value
-        matchMask = abs(frame-pickLum) < self.mirrorTolerance
+        matchMask = np.logical_and(
+            frame > pickArea.min()-self.mirrorTolerance, 
+            frame < pickArea.max()+self.mirrorTolerance)
 
         # prepare flooding
         toFlood = np.full(frame.shape, False)
@@ -170,6 +175,16 @@ class FrameAnalysis(PiYUVAnalysis):
         yMin, yMax = np.min(iMask[:, 0]), np.max(iMask[:, 0])
         
         return Rect(xMin, xMax, yMin, yMax)
+    
+
+    def artificalMirror(self, frame, widthRatio=0.2):
+        '''
+        Makes bounds of estimated mirror based on relative width
+        '''
+        frameRect = Rect(0, frame.shape[1], 0, frame.shape[0])
+        radius = int(widthRatio*frameRect.width/2)
+        mid = frameRect.center
+        return Rect(mid[0]-radius, mid[0]+radius, mid[1]-radius, mid[1]+radius)
     
 
     @property
