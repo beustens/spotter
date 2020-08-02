@@ -124,10 +124,10 @@ function parseRings(data) {
 
 function parseMarks(data) {
     // configure marks
+    if (data == undefined) return;
+
     const marksEle = document.getElementById("marks");
     marksEle.innerHTML = "";
-
-    if (data == undefined) return;
 
     // insert marks in container
     for (const mark of data) {
