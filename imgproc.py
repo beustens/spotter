@@ -230,7 +230,10 @@ class FrameAnalysis(PiYUVAnalysis):
         '''
         self.streamDims = frame.shape[::-1]
         img = frame.astype(np.uint8)
-        self.streamImage = self.imgArrayToImgBytes(img)
+        try:
+            self.streamImage = self.imgArrayToImgBytes(img)
+        except SystemError:
+            log.warning('Could not create stream image')
 
 
 class Slot:
