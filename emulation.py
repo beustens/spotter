@@ -30,7 +30,7 @@ class Emulator:
     def __init__(self):
         self.resolution = (1920, 1080)
         self.normContrast = 1. # 0...2
-        self.normBrightness = 1. # 0...2
+        self.normBrightness = 0. # -1...1
         self.fakeFPS = 15
         self.exposure_speed = 1e6/self.fakeFPS
         self.thread = None
@@ -61,12 +61,12 @@ class Emulator:
 
     @property
     def brightness(self):
-        return int(50*self.normBrightness)
+        return int(100*(self.normBrightness+0.5))
     
 
     @brightness.setter
     def brightness(self, val):
-        self.normBrightness = val/50.
+        self.normBrightness = val/100.-0.5
     
 
     @property
@@ -133,7 +133,7 @@ class ArtificialPiCamera(Emulator):
         self.mirrorRatio = 0.1 # radius as ratio to image width
         self.paperSize = 3*self.mirrorRatio
         self.holeRatio = 0.005 # radius as ratio to image with
-        self.holePeriod = 4. # generate every x seconds a new hole
+        self.holePeriod = 10. # generate every x seconds a new hole
         self.holeTime = time.time()+10. # start hole generation in y seconds
         self.makeCoords()
         self.baseImage = self.generateBaseImage()
@@ -194,17 +194,17 @@ class ArtificialPiCamera(Emulator):
             self.holeTime = now+self.holePeriod
             self.makeHole(img)
         # low pass filter a bit
-        img = ndimage.gaussian_filter(img, 3)
+        img = ndimage.gaussian_filter(img, 2)
         # add rough noise
         noise = np.random.normal(scale=0.05, size=(self.height, self.width))
-        noise = ndimage.gaussian_filter(noise, 4)
+        noise = ndimage.gaussian_filter(noise, 3)
         img += noise
         # add fine noise
         noise = np.random.normal(scale=0.02, size=(self.height, self.width))
         img += noise
 
         # apply contrast and brightness
-        img *= self.normBrightness
+        img += self.normBrightness
         img = (img-0.5)*self.normContrast+0.5
 
         # convert to image tensor
