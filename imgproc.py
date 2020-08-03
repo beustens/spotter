@@ -428,5 +428,9 @@ class Analysis:
             self.result = 'no change'
     
 
+    def __repr__(self):
+        return f'<Analysis({self.result})>'
+    
+
     def __str__(self):
-        return f'Analysis({self.result})'
+        return self.result
