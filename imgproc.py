@@ -92,7 +92,7 @@ class FrameAnalysis(PiYUVAnalysis):
             log.debug(f'Mirror bounds in camera frame: {pickBounds}')
             if pickBounds.width == 0 or pickBounds.height == 0:
                 log.error(f'Could not detect mirror correctly')
-                pickBounds = self.artificalMirror()
+                pickBounds = self.artificalMirror(frame)
             self.cropBounds = pickBounds.scaled(self.paperScale).minimized(frame)
             self.mirrorBounds = pickBounds.relativeTo(self.cropBounds)
             # proceed with next state
