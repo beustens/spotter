@@ -129,18 +129,24 @@ function parseMarks(data) {
     const marksEle = document.getElementById("marks");
     marksEle.innerHTML = "";
 
-    // insert marks in container
+    let ringSum = 0;
+    // insert marks in overlay container
     for (const mark of data) {
+        ringSum += mark.ring;
         // create mark element
         const markEle = document.createElement("div");
         markEle.classList.add("overlay");
         markEle.classList.add("circle");
         markEle.classList.add("mark");
-        markEle.style.top = mark.top+"%";
-        markEle.style.left = mark.left+"%";
+        const pos = mark.pos;
+        markEle.style.top = pos.top+"%";
+        markEle.style.left = pos.left+"%";
         // add mark to container
         marksEle.appendChild(markEle);
     }
+
+    // show sum
+    document.getElementById("ringsum").innerHTML = ringSum;
 }
 
 

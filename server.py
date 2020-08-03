@@ -197,7 +197,16 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
     def marksEvent(self, eventData):
         marksHash = hash(tuple(spotter.marks)) # to detect changed mark list
         if self.oldMarks != marksHash:
-            data = [self.pointPercent(mark) for mark in spotter.marks]
+            data = []
+            # in collect state, get marks
+            mirror = spotter.corrMirrorBounds
+            if mirror and spotter.state == State.DETECT:
+                for pos in spotter.marks:
+                    # look up ring for each mark
+                    ring = self.target.pointInRing(pos, mirror)
+                    mark = {'pos': self.pointPercent(pos), 'ring': ring}
+                    data.append(mark)
+            
             eventData.update({'marks': data})
             self.oldMarks = marksHash
     
