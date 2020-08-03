@@ -34,10 +34,10 @@ class Target:
         :param mirrorBounds: Rect object of mirror
         :returns: list of Rect objects for each ring bounds
         '''
-        return [mirrorBounds.scaled(ring) for ring in self.rings.values()]
+        return [mirrorBounds.scaled(size) for size in self.rings.values()]
     
 
-    def pointInRing(self, point, ringBounds):
+    def isPointInBounds(self, point, ringBounds):
         '''
         Checks if point is within ring
 
@@ -51,3 +51,22 @@ class Target:
         ry = ringBounds.height/2 # ellipse semi y-axis
         inside = ((x-h)**2/rx**2+(y-k)**2/ry**2) <= 1.
         return inside
+    
+
+    def pointInRing(self, point, mirrorBounds):
+        '''
+        Get ring closest to center for point
+
+        :param point: (left, top) pixel coordinates
+        :returns: ring number
+        '''
+        rings = sorted(self.rings.keys(), reverse=True) # get rings in falling order
+        for ring in rings:
+            # get ring bounds
+            size = self.rings[ring]
+            ringBounds = mirrorBounds.scaled(size)
+            # check if point is in bounds
+            if self.isPointInBounds(point, ringBounds):
+                return ring
+        
+        return ring
