@@ -2,29 +2,21 @@ class Target:
     '''
     Ring sizes on the target relative to the mirror
     '''
-    def __init__(self):
-        self.makeRings()
+    def __init__(self, data):
+        '''
+        :param data: dictionary with
+            "mirror": <mirror diameter>
+            "rings": dictionary with "<ring number>": <ring diameter>
+        '''
+        self.makeRings(data)
     
 
-    def makeRings(self):
+    def makeRings(self, data):
         '''
         Generates the ring <-> size association
-
-        This should be overidden for different target types
         '''
-        self.rings = {
-            1: 2.5, 
-            2: 2.25, 
-            3: 2., 
-            4: 1.75, 
-            5: 1.5, 
-            6: 1.25, 
-            7: 1., 
-            8: 0.75, 
-            9: 0.5,
-            10: 0.25, 
-            11: 0.125
-        }
+        d = float(data['mirror'])
+        self.rings = {int(k): float(v)/d for k, v in data['rings'].items()}
     
 
     def getRingBounds(self, mirrorBounds):
