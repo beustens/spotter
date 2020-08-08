@@ -21,7 +21,7 @@ updateSettings = {}
 
 class StreamingHandler(server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        self.target = Target()
+        self.target = Target(targetNum=4)
         self.oldStreamImage = None
         self.oldState = None
         self.oldFrameCnt = None
