@@ -184,12 +184,14 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
     
 
     def ringsEvent(self, eventData):
-        newMirror = spotter.corrMirrorBounds
+        newMirror = spotter.corrMirrorBounds if spotter.state == State.DETECT else None
         if self.oldMirror != newMirror:
             # corrected mirror coordinates in percent to stream
-            if newMirror and spotter.state == State.DETECT:
+            if newMirror:
                 rings = [self.rectPercent(ring) for ring in self.target.getRingBounds(newMirror)]
-                eventData.update({'rings': rings})
+            else:
+                rings = []
+            eventData.update({'rings': rings})
             
             self.oldMirror = newMirror
     

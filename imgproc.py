@@ -89,6 +89,9 @@ class FrameAnalysis(PiYUVAnalysis):
             self.reset()
             # detect mirror
             if not self.keepMirror:
+                log.debug('Resetting mirror transformation')
+                self.mirrorScale = (1., 1.)
+                self.mirrorTranslate = (0, 0)
                 log.info('Detecting mirror')
                 pickBounds = self.findMirror(frame)
                 log.debug(f'Mirror bounds in camera frame: {pickBounds}')

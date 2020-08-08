@@ -100,10 +100,10 @@ function parseState(data) {
 
 function parseRings(data) {
     // configure rings
+    if (data == undefined) return;
+    
     const ringsEle = document.getElementById("rings");
     ringsEle.innerHTML = "";
-
-    if (data == undefined) return;
     
     // insert marks in container
     for (const size of data) {
