@@ -1,14 +1,25 @@
+import json # to load diameters from json file
+
+
 class Target:
     '''
     Ring sizes on the target relative to the mirror
     '''
-    def __init__(self, data):
+    def __init__(self, data=None, targetNum=0):
         '''
         :param data: dictionary with
             "mirror": <mirror diameter>
             "rings": dictionary with "<ring number>": <ring diameter>
+        :param targetNum: when given, loads the data from the database
         '''
-        self.makeRings(data)
+        if data:
+            self.makeRings(data)
+        elif targetNum > 0:
+            with open('targets.json') as database:
+                data = json.load(database)
+                self.makeRings(data)
+        else:
+            raise ValueError('Provide either data dictionary or target number')
     
 
     def makeRings(self, data):
