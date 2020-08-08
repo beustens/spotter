@@ -15,8 +15,9 @@ class Target:
         if data:
             self.makeRings(data)
         elif targetNum > 0:
-            with open('targets.json') as database:
-                data = json.load(database)
+            with open('targets.json') as f:
+                database = json.load(f)
+                data = database[str(targetNum)]
                 self.makeRings(data)
         else:
             raise ValueError('Provide either data dictionary or target number')
