@@ -63,7 +63,7 @@ class FrameAnalysis(PiYUVAnalysis):
         '''
         Resets analysis results
         '''
-        self.debug('Resetting analysis results and marks')
+        log.debug('Resetting analysis results and marks')
         self.slot = Slot()
         self.slots = deque(maxlen=self.maxSlots)
         self.analysis = None # last analysis
