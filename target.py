@@ -37,20 +37,31 @@ class Target:
         return [mirrorBounds.scaled(size) for size in self.rings.values()]
     
 
-    def isPointInBounds(self, point, ringBounds):
+    def pointInEllipse(self, point, ringBounds):
         '''
-        Checks if point is within ring
+        Calculates how much a point is in a ellipse, defined by bounds
 
         :param point: (left, top) pixel coordinates
         :param ringBounds: Rect object of ring bounds
+        :returns: relative value normalized to 1 = point on edge
         '''
         # calculations according to https://math.stackexchange.com/questions/76457/check-if-a-point-is-within-an-ellipse
         h, k = ringBounds.center # ellipse center coordinates
         x, y = point # point to test
         rx = ringBounds.width/2 # ellipse semi x-axis
         ry = ringBounds.height/2 # ellipse semi y-axis
-        inside = ((x-h)**2/rx**2+(y-k)**2/ry**2) <= 1.
-        return inside
+        return (x-h)**2/rx**2+(y-k)**2/ry**2
+    
+
+    def isPointInRing(self, point, ringBounds):
+        '''
+        Checks if point is within ring
+
+        :param point: (left, top) pixel coordinates
+        :param ringBounds: Rect object of ring bounds
+        :returns: True if point is in ring or False if not
+        '''
+        return True if self.pointInEllipse(point, ringBounds) <= 1. else False
     
 
     def pointInRing(self, point, mirrorBounds):
@@ -66,7 +77,7 @@ class Target:
             size = self.rings[ring]
             ringBounds = mirrorBounds.scaled(size)
             # check if point is in bounds
-            if self.isPointInBounds(point, ringBounds):
+            if self.isPointInRing(point, ringBounds):
                 return ring
         
         return ring
