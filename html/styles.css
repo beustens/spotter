@@ -10,6 +10,7 @@ html, body {
 body {
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     --specialcol: #40a0b0;
+    --bgcol: #f0f0f0;
 }
 
 h3 {
@@ -25,7 +26,7 @@ input {
 	border: 0em;
     border-radius: 0.3em;
     color: var(--specialcol);
-	background-color: #f0f0f0;
+	background-color: var(--bgcol);
 }
 
 input[type="button"] {
@@ -112,7 +113,7 @@ input[type="button"]:hover {
 .progressbar {
     height: 0.1em;
     margin-bottom: 1em;
-    background-color: #f0f0f0;
+    background-color: var(--bgcol);
 }
 
 .progressbar > .overlay {
@@ -130,4 +131,30 @@ input[type="button"]:hover {
 
 input + span {
     padding-left: 1em;
+}
+
+.scrolllist {
+    max-height: 11em;
+    overflow-y: auto;
+    margin-bottom: 0.5em;
+}
+
+.scrolllist > div {
+    min-height: 1em;
+    color: var(--specialcol);
+    background-color: var(--bgcol);
+    margin-bottom: 0.1em;
+    padding-left: 0.2em;
+}
+
+.scrolllist > div:nth-child(-n+11) {
+    color: #60e030;
+}
+
+.scrolllist > div:nth-child(-n+6) {
+    color: #ffd000;
+}
+
+.scrolllist > div:nth-child(1) {
+    color: #ff0000;
 }

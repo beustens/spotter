@@ -101,7 +101,7 @@ function parseState(data) {
 function parseRings(data) {
     // configure rings
     if (data == undefined) return;
-    
+
     const ringsEle = document.getElementById("rings");
     ringsEle.innerHTML = "";
     
@@ -126,14 +126,24 @@ function parseMarks(data) {
     // configure marks
     if (data == undefined) return;
 
+    // overlay container
     const marksEle = document.getElementById("marks");
     marksEle.innerHTML = "";
 
+    // list container
+    const listEle = document.getElementById("marklist");
+    listEle.innerHTML = "";
+
     let ringSum = 0;
-    // insert marks in overlay container
+    let innerSum = 0;
+    // insert marks in container
     for (const mark of data) {
-        ringSum += mark.ring;
-        // create mark element
+        // count limited values and innermost rings
+        const limValue = Math.min(mark.ring, 10);
+        ringSum += limValue;
+        if (mark.ring > 10) innerSum += 1;
+
+        // create overlay mark element
         const markEle = document.createElement("div");
         markEle.classList.add("overlay");
         markEle.classList.add("circle");
@@ -141,12 +151,23 @@ function parseMarks(data) {
         const pos = mark.pos;
         markEle.style.top = pos.top+"%";
         markEle.style.left = pos.left+"%";
-        // add mark to container
+        // add mark to overlay container
         marksEle.appendChild(markEle);
+
+        // create list mark element
+        const entryEle = document.createElement("div");
+        entryEle.classList.add("bar");
+        entryEle.style.width = 10*limValue+"%";
+        entryEle.innerHTML = limValue;
+        if (mark.ring > 10) entryEle.innerHTML += "+";
+        // add entry to list container
+        listEle.appendChild(entryEle);
     }
 
     // show sum
-    document.getElementById("ringsum").innerHTML = ringSum;
+    const ringSumEle = document.getElementById("ringsum");
+    ringSumEle.innerHTML = ringSum;
+    if (innerSum > 0) ringSumEle.innerHTML += (" (+"+innerSum+")");
 }
 
 
