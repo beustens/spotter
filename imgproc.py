@@ -310,6 +310,10 @@ class Rect:
         return hash((self.left, self.right, self.top, self.bottom))
     
 
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+    
+
     @property
     def width(self):
         '''
