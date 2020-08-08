@@ -197,7 +197,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
     
 
     def marksEvent(self, eventData):
-        marksHash = hash(tuple(spotter.marks)) # to detect changed mark list
+        marksHash = hash(tuple(spotter.marks) if spotter.state == State.DETECT else None) # to detect changed mark list
         if self.oldMarks != marksHash:
             data = []
             # in collect state, get marks
