@@ -39,6 +39,10 @@ class FrameAnalysis(PiYUVAnalysis):
         self.mirrorTolerance = 10 # tolerance to find mirror pixels from center luminance
         self.mirrorPickSize = 20 # center size (width and height) in pixels to pick luminance
         self.paperScale = 3. # overall paper is that much larger than mirror
+        self.mirrorScale = (1., 1.) # scale corrections of mirror bounds
+        self.mirrorTranslate = (0, 0) # position corrections of mirror bounds
+        self.cropBounds = None
+        self.mirrorBounds = None
         self.keepMirror = False
 
         # slot related
@@ -59,11 +63,7 @@ class FrameAnalysis(PiYUVAnalysis):
         '''
         Resets analysis results
         '''
-        if not self.keepMirror:
-            self.cropBounds = None
-            self.mirrorBounds = None
-            self.mirrorScale = (1., 1.) # scale corrections of mirror bounds
-            self.mirrorTranslate = (0, 0) # position corrections of mirror bounds
+        self.debug('Resetting analysis results and marks')
         self.slot = Slot()
         self.slots = deque(maxlen=self.maxSlots)
         self.analysis = None # last analysis
@@ -82,19 +82,21 @@ class FrameAnalysis(PiYUVAnalysis):
         frame = img[:, :, 0] # get luminance channel of YUV
 
         if self.state == State.PREVIEW:
-            # in preview state, reset analysis results and output uncropped frame
-            self.reset()
+            # in preview state, output uncropped frame
             self.makeStreamImage(frame[::2, ::2] if self.halfPreviewRes else frame)
         elif self.state == State.START:
+            # reset analysis results and marks
+            self.reset()
             # detect mirror
-            log.info('Detecting mirror')
-            pickBounds = self.findMirror(frame)
-            log.debug(f'Mirror bounds in camera frame: {pickBounds}')
-            if pickBounds.width == 0 or pickBounds.height == 0:
-                log.error(f'Could not detect mirror correctly')
-                pickBounds = self.artificalMirror(frame)
-            self.cropBounds = pickBounds.scaled(self.paperScale).minimized(frame)
-            self.mirrorBounds = pickBounds.relativeTo(self.cropBounds)
+            if not self.keepMirror:
+                log.info('Detecting mirror')
+                pickBounds = self.findMirror(frame)
+                log.debug(f'Mirror bounds in camera frame: {pickBounds}')
+                if pickBounds.width == 0 or pickBounds.height == 0:
+                    log.error(f'Could not detect mirror correctly')
+                    pickBounds = self.artificalMirror(frame)
+                self.cropBounds = pickBounds.scaled(self.paperScale).minimized(frame)
+                self.mirrorBounds = pickBounds.relativeTo(self.cropBounds)
             # proceed with next state
             log.info('Collecting frames')
             self.state = State.COLLECT
@@ -302,6 +304,10 @@ class Rect:
 
     def __str__(self):
         return f'Rect(left: {self.left}, right: {self.right}, top: {self.top}, bottom: {self.bottom})'
+    
+
+    def __hash__(self):
+        return hash((self.left, self.right, self.top, self.bottom))
     
 
     @property
