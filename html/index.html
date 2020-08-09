@@ -65,14 +65,14 @@
                 <div class="paramlist">
                     <div>Sum: <span class="statevar" id="ringsum">0</span></div>
                 </div>
-                <div id="markselect">
-                    <h3>Mark corrections</h3>
+                <div id="markselect" style="display: none;">
+                    <h3>Selected mark</h3>
                     <div class="paramlist">
                         <div>
-                            Left: <input type="number" name="markleft" step="1"><span>Top: </span><input type="number" name="marktop" step="1">
+                            Left: <input type="number" id="markleft" step="1"><span>Top: </span><input type="number" id="marktop" step="1">
                         </div>
                         <div>
-                            <input type="button" name="correctmark" value="Correct"><input type="button" name="copymark" value="Copy"><input type="button" name="deletemark" value="Delete">
+                            <input type="button" value="Correct" onclick="correctMark()"><input type="button" value="Copy" onclick="copyMark()"><input type="button" value="Delete" onclick="deleteMark()">
                         </div>
                     </div>
                 </div>

@@ -326,7 +326,7 @@ class Rect:
         '''
         :returns: center position indices (x, y)
         '''
-        return ((self.left+self.right)//2, (self.top+self.bottom)//2)
+        return (int((self.left+self.right)/2), int((self.top+self.bottom)/2))
     
 
     def scaled(self, fac):

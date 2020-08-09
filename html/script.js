@@ -95,7 +95,7 @@ function parseState(data) {
     } else {
         msgEle.style.display = "none";
     }
-};
+}
 
 
 function parseRings(data) {
@@ -119,7 +119,7 @@ function parseRings(data) {
         // add ring to container
         ringsEle.appendChild(ringEle);
     }
-};
+}
 
 
 function parseMarks(data) {
@@ -134,10 +134,13 @@ function parseMarks(data) {
     const listEle = document.getElementById("marklist");
     listEle.innerHTML = "";
 
+    document.getElementById("markselect").style.display = "none";
     let ringSum = 0;
     let innerSum = 0;
-    // insert marks in container
-    for (const mark of data.reverse()) {
+    // insert marks in container in reverse order to have newest at top
+    for (let iMark = data.length-1; iMark >= 0; iMark--) {
+        const mark = data[iMark];
+
         // count limited values and innermost rings
         const limValue = Math.min(mark.ring, 10);
         ringSum += limValue;
@@ -148,7 +151,7 @@ function parseMarks(data) {
         markEle.classList.add("overlay");
         markEle.classList.add("circle");
         markEle.classList.add("mark");
-        const pos = mark.pos;
+        const pos = mark.relpos;
         markEle.style.top = pos.top+"%";
         markEle.style.left = pos.left+"%";
         // add mark to overlay container
@@ -162,12 +165,50 @@ function parseMarks(data) {
         if (mark.ring > 10) entryEle.innerHTML += "+";
         // add entry to list container
         listEle.appendChild(entryEle);
+
+        // add listener for selection
+        markEle.addEventListener("click", function(){
+            selectMark(iMark, mark.pixpos);
+            highlightSelection(markEle);
+            highlightSelection(entryEle);
+        });
+        entryEle.addEventListener("click", function(){
+            selectMark(iMark, mark.pixpos);
+            highlightSelection(markEle);
+            highlightSelection(entryEle);
+        });
     }
 
     // show sum
     const ringSumEle = document.getElementById("ringsum");
     ringSumEle.innerHTML = ringSum;
     if (innerSum > 0) ringSumEle.innerHTML += (" (+"+innerSum+")");
+}
+
+
+let selectedMark = null;
+
+function selectMark(markIndex, markPos) {
+    // show selection
+    document.getElementById("markselect").style.display = "block";
+    // insert current position in input elements for change
+    document.getElementById("markleft").value = markPos.left;
+    document.getElementById("marktop").value = markPos.top;
+    // update object for selected mark
+    selectedMark = {
+        index: markIndex, 
+        pos: markPos
+    }
+}
+
+
+function highlightSelection(ele) {
+    // clear old highlights
+    for (const childEle of ele.parentElement.children) {
+        childEle.classList.remove("selected");
+    }
+    // highlight
+    ele.classList.add("selected");
 }
 
 

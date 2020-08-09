@@ -90,6 +90,7 @@ input[type="button"]:hover {
     width: 1em;
     height: 1em;
     transform: translate(-50%, -50%);
+    cursor: pointer;
 }
 
 .mark:nth-child(-n+11) {
@@ -102,6 +103,10 @@ input[type="button"]:hover {
 
 .mark:nth-child(1) {
     border-color: #ff0000;
+}
+
+.mark.selected {
+    border-width: 0.3em;
 }
 
 .center {
@@ -139,26 +144,28 @@ input + span {
     margin-bottom: 0.5em;
 }
 
-.scrolllist > div {
+.bar {
     min-height: 1em;
     color: var(--specialcol);
     background-color: var(--bgcol);
     margin-bottom: 0.1em;
     padding-left: 0.2em;
+    cursor: pointer;
 }
 
-.scrolllist > div:nth-child(-n+11) {
+.bar:nth-child(-n+11) {
     color: #60c030;
 }
 
-.scrolllist > div:nth-child(-n+6) {
+.bar:nth-child(-n+6) {
     color: #efb000;
 }
 
-.scrolllist > div:nth-child(1) {
+.bar:nth-child(1) {
     color: #ff0000;
 }
 
-#markselect {
-    display: none;
+.bar.selected {
+    background-color: var(--specialcol);
+    color: #000000;
 }

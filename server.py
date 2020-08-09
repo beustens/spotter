@@ -206,7 +206,11 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                 for pos in spotter.marks:
                     # look up ring for each mark
                     ring = self.target.pointInRing(pos, mirror)
-                    mark = {'pos': self.pointPercent(pos), 'ring': ring}
+                    mark = {
+                        'pixpos': {'left': pos[0], 'top': pos[1]}, 
+                        'relpos': self.pointPercent(pos), 
+                        'ring': ring
+                    }
                     data.append(mark)
             
             eventData.update({'marks': data})
