@@ -49,12 +49,11 @@ class Target:
         :param ringBounds: Rect object of ring bounds
         :returns: relative value normalized to 1 = point on edge
         '''
-        # calculations according to https://math.stackexchange.com/questions/76457/check-if-a-point-is-within-an-ellipse
         h, k = ringBounds.center # ellipse center coordinates
         x, y = point # point to test
         rx = ringBounds.width/2 # ellipse semi x-axis
         ry = ringBounds.height/2 # ellipse semi y-axis
-        return (x-h)**2/rx**2+(y-k)**2/ry**2
+        return (((x-h)/rx)**2+((y-k)/ry)**2)**0.5
     
 
     def isPointInRing(self, point, ringBounds):
