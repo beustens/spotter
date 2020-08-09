@@ -148,13 +148,17 @@ input + span {
 }
 
 .scrolllist > div:nth-child(-n+11) {
-    color: #60e030;
+    color: #60c030;
 }
 
 .scrolllist > div:nth-child(-n+6) {
-    color: #ffd000;
+    color: #efb000;
 }
 
 .scrolllist > div:nth-child(1) {
     color: #ff0000;
+}
+
+#markselect {
+    display: none;
 }
