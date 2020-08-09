@@ -122,6 +122,8 @@ function parseRings(data) {
 }
 
 
+let selectedMark = null;
+
 function parseMarks(data) {
     // configure marks
     if (data == undefined) return;
@@ -135,6 +137,7 @@ function parseMarks(data) {
     listEle.innerHTML = "";
 
     document.getElementById("markselect").style.display = "none";
+    selectedMark = null;
     let ringSum = 0;
     let innerSum = 0;
     // insert marks in container in reverse order to have newest at top
@@ -186,8 +189,6 @@ function parseMarks(data) {
 }
 
 
-let selectedMark = null;
-
 function selectMark(markIndex, markPos) {
     // show selection
     document.getElementById("markselect").style.display = "block";
@@ -209,6 +210,30 @@ function highlightSelection(ele) {
     }
     // highlight
     ele.classList.add("selected");
+}
+
+
+function correctMark() {
+    // get correction coordinates by user
+    const left = document.getElementById("markleft").value;
+    const top = document.getElementById("marktop").value;
+
+    // send to server
+    post("/mark", {
+        action: "correct", 
+        index: selectedMark.index, 
+        pos: {left: left, top: top}
+    });
+}
+
+
+function copyMark() {
+    post("/mark", {action: "copy", index: selectedMark.index});
+}
+
+
+function deleteMark() {
+    post("/mark", {action: "delete", index: selectedMark.index});
 }
 
 

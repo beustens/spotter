@@ -272,6 +272,22 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
             # update settings for all clients
             for k in updateSettings:
                 updateSettings[k] = True
+        elif self.path == '/mark':
+            # client wants to change a mark
+            action = data['action']
+            iMark = data['index']
+            log.info(f'Client wants to {action} mark {iMark}')
+            if action == 'delete':
+                # delete mark
+                del spotter.marks[iMark]
+            elif action == 'copy':
+                # copy mark
+                spotter.marks.append(spotter.marks[iMark])
+            elif action == 'correct':
+                # change position of mark
+                pos = data['pos']
+                pos = (int(pos['left']), int(pos['top']))
+                spotter.marks[iMark] = pos
 
         # respond
         self.send_response(200)
