@@ -52,9 +52,6 @@ class FrameAnalysis(PiYUVAnalysis):
         # hole detection related
         self.thresh = 5 # hole detection sensitivity
         self.maxHoleSize = 20 # maximum expected hole size in width or height pixels
-        
-        # marks related
-        self.maxMarks = 100 # maximum number marks to keep in history
 
         self.reset()
     
@@ -68,7 +65,7 @@ class FrameAnalysis(PiYUVAnalysis):
         self.slots = deque(maxlen=self.maxSlots)
         self.analysis = None # last analysis
         self.detected = []
-        self.marks = deque(maxlen=self.maxMarks)
+        self.marks = []
     
 
     def analyse(self, img):
@@ -129,7 +126,7 @@ class FrameAnalysis(PiYUVAnalysis):
                         # add mark of detection
                         if self.detected:
                             log.debug('Adding change detection mark')
-                            self.cycleMarks(self.detected[0])
+                            self.marks.append(self.detected[0])
                         self.detected = []
                     
                     # debug display
@@ -217,15 +214,6 @@ class FrameAnalysis(PiYUVAnalysis):
             return True
         else:
             return False
-    
-
-    def cycleMarks(self, pos):
-        '''
-        Pushes new mark middle position into buffer
-
-        :param pos: tuple of (left, top) pixel matrix indices
-        '''
-        self.marks.appendleft(pos)
     
 
     def imgArrayToImgBytes(self, img, filetype='jpeg'):

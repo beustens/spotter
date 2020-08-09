@@ -137,7 +137,7 @@ function parseMarks(data) {
     let ringSum = 0;
     let innerSum = 0;
     // insert marks in container
-    for (const mark of data) {
+    for (const mark of data.reverse()) {
         // count limited values and innermost rings
         const limValue = Math.min(mark.ring, 10);
         ringSum += limValue;

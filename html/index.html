@@ -43,10 +43,10 @@
                 <h3>Ring corrections</h3>
                 <div class="paramlist">
                     <div>
-                        width: <input type="number" name="ringswidth" min="50" max="150" onchange="enterParam(this)"><span>height: </span><input type="number" name="ringsheight" min="50" max="150" onchange="enterParam(this)">
+                        Width: <input type="number" name="ringswidth" min="50" max="150" onchange="enterParam(this)"><span>Height: </span><input type="number" name="ringsheight" min="50" max="150" onchange="enterParam(this)">
                     </div>
                     <div>
-                        left: <input type="number" name="ringsleft" step="1" onchange="enterParam(this)"><span>top: </span><input type="number" name="ringstop" step="1" onchange="enterParam(this)">
+                        Left: <input type="number" name="ringsleft" step="1" onchange="enterParam(this)"><span>Top: </span><input type="number" name="ringstop" step="1" onchange="enterParam(this)">
                     </div>
                     <div>
                         Save for next start: <input type="checkbox" name="saverings" onclick="enterParam(this)">
@@ -64,6 +64,17 @@
                 <div class="scrolllist" id="marklist"></div>
                 <div class="paramlist">
                     <div>Sum: <span class="statevar" id="ringsum">0</span></div>
+                </div>
+                <div id="markselect">
+                    <h3>Mark corrections</h3>
+                    <div class="paramlist">
+                        <div>
+                            Left: <input type="number" name="markleft" step="1"><span>Top: </span><input type="number" name="marktop" step="1">
+                        </div>
+                        <div>
+                            <input type="button" name="correctmark" value="Correct"><input type="button" name="copymark" value="Copy"><input type="button" name="deletemark" value="Delete">
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
