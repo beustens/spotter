@@ -21,7 +21,8 @@ updateSettings = {}
 
 class StreamingHandler(server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        self.target = Target(targetNum=4)
+        self.target = Target(num=4)
+        self.muniDia = 5.5
         self.oldStreamImage = None
         self.oldState = None
         self.oldFrameCnt = None
@@ -205,7 +206,7 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
             if mirror and spotter.state == State.DETECT:
                 for pos in spotter.marks:
                     # look up ring for each mark
-                    ring = self.target.pointInRing(pos, mirror)
+                    ring = self.target.pointInRing(pos, mirror, self.muniDia)
                     mark = {
                         'pixpos': {'left': pos[0], 'top': pos[1]}, 
                         'relpos': self.pointPercent(pos), 

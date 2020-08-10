@@ -5,19 +5,19 @@ class Target:
     '''
     Ring sizes on the target relative to the mirror
     '''
-    def __init__(self, data=None, targetNum=0):
+    def __init__(self, data=None, num=0):
         '''
         :param data: dictionary with
             "mirror": <mirror diameter>
             "rings": dictionary with "<ring number>": <ring diameter>
-        :param targetNum: when given, loads the data from the database
+        :param num: when given, loads the data from the database
         '''
         if data:
             self.makeRings(data)
-        elif targetNum > 0:
+        elif num > 0:
             with open('targets.json') as f:
                 database = json.load(f)
-                data = database[str(targetNum)]
+                data = database[str(num)]
                 self.makeRings(data)
         else:
             raise ValueError('Provide either data dictionary or target number')
@@ -27,8 +27,8 @@ class Target:
         '''
         Generates the ring <-> size association
         '''
-        d = float(data['mirror'])
-        self.rings = {int(k): float(v)/d for k, v in data['rings'].items()}
+        self.mirrorDia = float(data['mirror'])
+        self.rings = {int(k): float(v)/self.mirrorDia for k, v in data['rings'].items()}
     
 
     def getRingBounds(self, mirrorBounds):
@@ -56,31 +56,35 @@ class Target:
         return (((x-h)/rx)**2+((y-k)/ry)**2)**0.5
     
 
-    def isPointInRing(self, point, ringBounds):
+    def isHoleInRing(self, point, ringBounds, hole=0):
         '''
         Checks if point is within ring
 
         :param point: (left, top) pixel coordinates
-        :param ringBounds: Rect object of ring bounds
+        :param ringBounds: Rect object of ring bounds in pixels
+        :param hole: hole size in pixels
         :returns: True if point is in ring or False if not
         '''
-        return True if self.pointInEllipse(point, ringBounds) <= 1. else False
+        return True if self.pointInEllipse(point, ringBounds) <= 1+hole/ringBounds.width else False
     
 
-    def pointInRing(self, point, mirrorBounds):
+    def pointInRing(self, point, mirrorBounds, pointDia=0.):
         '''
         Get ring closest to center for point
 
         :param point: (left, top) pixel coordinates
+        :param mirrorBounds: Rect object of mirror bounds in pixels
+        :param pointDia: point diameter in mm
         :returns: ring number
         '''
+        pointWidth = pointDia*mirrorBounds.width/self.mirrorDia # hole size in pixels
         rings = sorted(self.rings.keys(), reverse=True) # get rings in falling order
         for ring in rings:
             # get ring bounds
             size = self.rings[ring]
             ringBounds = mirrorBounds.scaled(size)
             # check if point is in bounds
-            if self.isPointInRing(point, ringBounds):
+            if self.isHoleInRing(point, ringBounds, pointWidth):
                 return ring
         
         return ring
