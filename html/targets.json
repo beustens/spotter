@@ -1,6 +1,5 @@
 {
-    "3": {
-        "name": "50 m Gewehr", 
+    "50 m Gewehr": {
         "mirror": 112.4, 
         "rings": {
             "11": 5.0, 
@@ -16,8 +15,7 @@
             "1": 154.4
         }
     }, 
-    "4": {
-        "name": "100 m Gewehr, 25 m Pistole", 
+    "100 m Gewehr, 25 m Pistole": {
         "mirror": 200, 
         "rings": {
             "11": 25, 

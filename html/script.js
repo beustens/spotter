@@ -3,6 +3,25 @@ window.post = function(url, data) {
 }
 
 
+function fillTargetList() {
+    fetch("targets.json")
+        .then(res => res.json())
+        .then(data => {
+            const targetsEle = document.getElementById("targets");
+            for (const name of Object.keys(data)) {
+                // create option for target
+                const targetEle = document.createElement("option");
+                targetEle.innerHTML = name;
+                targetEle.value = name;
+                // add to list
+                targetsEle.appendChild(targetEle);
+            }
+        })
+}
+
+fillTargetList();
+
+
 function enterParam(paramElement) {
     // entering values via input elements
     let paramKey = paramElement.name;
@@ -22,6 +41,7 @@ changeSource.onmessage = function(event) {
     parseState(data.state);
     parseRings(data.rings);
     parseMarks(data.marks);
+    parseMarkSize(data.marksize);
 }
 
 
@@ -36,6 +56,13 @@ function parseSettings(data) {
             } else {
                 inputEle.value = data[inputEle.name];
             }
+        }
+    }
+
+    // insert parameters in dropdown menu
+    for (const selectEle of document.getElementsByTagName("select")) {
+        if (selectEle.name in data) {
+            selectEle.value = data[selectEle.name];
         }
     }
 }
@@ -90,10 +117,26 @@ function parseState(data) {
 
     // configure message
     const msgEle = document.getElementById("message");
-    if (data.state === "COLLECT") {
+    if (data.state == "COLLECT") {
         msgEle.style.display = "block";
     } else {
         msgEle.style.display = "none";
+    }
+
+    // show or hide state specific settings
+    // discipline in preview state
+    const disciplineEle = document.getElementById("discipline");
+    if (data.state == "PREVIEW") {
+        disciplineEle.style.display = "block";
+    } else {
+        disciplineEle.style.display = "none";
+    }
+    // ring corrections in detect state
+    const ringcorrEle = document.getElementById("ringcorrections");
+    if (data.state == "DETECT") {
+        ringcorrEle.style.display = "block";
+    } else {
+        ringcorrEle.style.display = "none";
     }
 }
 
@@ -186,6 +229,17 @@ function parseMarks(data) {
     const ringSumEle = document.getElementById("ringsum");
     ringSumEle.innerHTML = ringSum;
     if (innerSum > 0) ringSumEle.innerHTML += (" (+"+innerSum+")");
+}
+
+
+function parseMarkSize(data) {
+    if (data == undefined) return;
+
+    // configure mark overlay size
+    for (const markEle of document.getElementsByClassName("mark")) {
+        markEle.style.width = data.width+"%";
+        markEle.style.height = data.height+"%";
+    }
 }
 
 

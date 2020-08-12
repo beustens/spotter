@@ -5,22 +5,39 @@ class Target:
     '''
     Ring sizes on the target relative to the mirror
     '''
-    def __init__(self, data=None, num=0):
+    def __init__(self, data=None, name='', dbPath='html/targets.json', holeDia=0.):
         '''
         :param data: dictionary with
             "mirror": <mirror diameter>
             "rings": dictionary with "<ring number>": <ring diameter>
-        :param num: when given, loads the data from the database
+        :param name: when given, loads the data from the JSON database key
+        :param dbPath: JSON database filepath
+        :param holeDia: diameter of holes from munition in mm
         '''
+        self.holeDia = holeDia
+        self.name = ''
+        self.dbPath = dbPath
         if data:
             self.makeRings(data)
-        elif num > 0:
-            with open('targets.json') as f:
-                database = json.load(f)
-                data = database[str(num)]
-                self.makeRings(data)
+        elif name:
+            self.fromDatabase(name)
         else:
             raise ValueError('Provide either data dictionary or target number')
+        self._mirrorBounds = None # mirror Rect in pixels
+    
+
+    @property
+    def mirrorBounds(self):
+        if self._mirrorBounds is None:
+            raise AttributeError('Mirror bounds not set')
+
+        return self._mirrorBounds
+    
+
+    @mirrorBounds.setter
+    def mirrorBounds(self, val):
+        if val is not None:
+            self._mirrorBounds = val
     
 
     def makeRings(self, data):
@@ -31,14 +48,38 @@ class Target:
         self.rings = {int(k): float(v)/self.mirrorDia for k, v in data['rings'].items()}
     
 
-    def getRingBounds(self, mirrorBounds):
+    def fromDatabase(self, name):
         '''
-        Calculates bounds for each ring based on mirror
+        Generates the rings from database key
+        '''
+        with open(self.dbPath) as f:
+            database = json.load(f)
+            data = database[name]
+            self.makeRings(data)
+            self.name = name
+    
 
-        :param mirrorBounds: Rect object of mirror
-        :returns: list of Rect objects for each ring bounds
+    def mmToPix(self, mm):
         '''
-        return [mirrorBounds.scaled(size) for size in self.rings.values()]
+        Converts a size in mm to pixels
+        '''
+        return mm*self.mirrorBounds.width/self.mirrorDia
+    
+
+    @property
+    def holeSize(self):
+        '''
+        :returns: hole size in pixels
+        '''
+        return self.mmToPix(self.holeDia)
+    
+
+    @property
+    def ringBounds(self):
+        '''
+        :returns: list of Rect objects for each ring bounds in pixels
+        '''
+        return [self.mirrorBounds.scaled(size) for size in self.rings.values()]
     
 
     def pointInEllipse(self, point, ringBounds):
@@ -68,23 +109,22 @@ class Target:
         return True if self.pointInEllipse(point, ringBounds) <= 1+hole/ringBounds.width else False
     
 
-    def pointInRing(self, point, mirrorBounds, pointDia=0.):
+    def pointInRing(self, pointPos, pointDia=0.):
         '''
         Get ring closest to center for point
 
-        :param point: (left, top) pixel coordinates
-        :param mirrorBounds: Rect object of mirror bounds in pixels
+        :param pointPos: (left, top) pixel coordinates
         :param pointDia: point diameter in mm
         :returns: ring number
         '''
-        pointWidth = pointDia*mirrorBounds.width/self.mirrorDia # hole size in pixels
+        pointWidth = self.holeSize # hole size in pixels
         rings = sorted(self.rings.keys(), reverse=True) # get rings in falling order
         for ring in rings:
             # get ring bounds
             size = self.rings[ring]
-            ringBounds = mirrorBounds.scaled(size)
+            ringBounds = self.mirrorBounds.scaled(size)
             # check if point is in bounds
-            if self.isHoleInRing(point, ringBounds, pointWidth):
+            if self.isHoleInRing(pointPos, ringBounds, pointWidth):
                 return ring
         
         return ring

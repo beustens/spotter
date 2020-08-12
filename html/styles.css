@@ -18,7 +18,7 @@ h3 {
     margin-bottom: 0.5em;
 }
 
-input {
+input, select {
     flex-grow: 1;
     margin-left: 1em;
     min-width: 3em;
@@ -94,19 +94,19 @@ input[type="button"]:hover {
 }
 
 .mark:nth-child(-n+11) {
-    border-color: #60e030;
+    --specialcol: #60e030;
 }
 
 .mark:nth-child(-n+6) {
-    border-color: #ffd000;
+    --specialcol: #ffd000;
 }
 
 .mark:nth-child(1) {
-    border-color: #ff0000;
+    --specialcol: #ff0000;
 }
 
 .mark.selected {
-    border-width: 0.3em;
+    background-color: var(--specialcol);
 }
 
 .center {
@@ -154,15 +154,15 @@ input + span {
 }
 
 .bar:nth-child(-n+11) {
-    color: #60c030;
+    --specialcol: #60c030;
 }
 
 .bar:nth-child(-n+6) {
-    color: #efb000;
+    --specialcol: #efb000;
 }
 
 .bar:nth-child(1) {
-    color: #ff0000;
+    --specialcol: #ff0000;
 }
 
 .bar.selected {

@@ -17,18 +17,30 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(f'spotter_{__name__}')
 
 updateSettings = {}
+target = Target(name='100 m Gewehr, 25 m Pistole', holeDia=5.5)
 
 
 class StreamingHandler(server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        self.target = Target(num=4)
-        self.muniDia = 5.5
+        log.warning('Creating new Streaming Handler')
         self.oldStreamImage = None
         self.oldState = None
         self.oldFrameCnt = None
         self.oldMirror = None
         self.oldMarks = None
+        self.oldMarkDia = None
+        self.oldTargetName = None
         super().__init__(*args, directory='html', **kwargs)
+    
+
+    def pixToPercent(self, pix):
+        '''
+        Converts pixel size to size in percent 
+        to the current stream image
+
+        :param pix: (x, y) pixel values
+        '''
+        return (100*pix[0]/spotter.streamDims[0], 100*pix[1]/spotter.streamDims[1])
     
 
     def pointPercent(self, point):
@@ -39,8 +51,8 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
         :returns: dictionary with keys "left", "top"
             and values in percentage
         '''
-        x, y = point
-        return {'left': 100*x/spotter.streamDims[0], 'top': 100*y/spotter.streamDims[1]}
+        percent = self.pixToPercent(point)
+        return {'left': percent[0], 'top': percent[1]}
     
 
     def rectPercent(self, rect):
@@ -51,12 +63,13 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
         :returns: dictionary with keys "left", "top", "width", "height"
             and values in percentage
         '''
-        w, h = spotter.streamDims[0], spotter.streamDims[1]
+        posPercent = self.pixToPercent((rect.left, rect.top))
+        sizePercent = self.pixToPercent((rect.width, rect.height))
         percent = {
-            'left': 100*rect.left/w, 
-            'top': 100*rect.top/h, 
-            'width': 100*rect.width/w, 
-            'height': 100*rect.height/h
+            'left': posPercent[0], 
+            'top': posPercent[1], 
+            'width': sizePercent[0], 
+            'height': sizePercent[1]
         }
         return percent
     
@@ -130,6 +143,8 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                 'threshold': spotter.thresh, 
                 'average': spotter.nSlotFrames, 
                 'showdiff': spotter.showDiff, 
+                'target': target.name, 
+                'markdia': target.holeDia, 
                 'ringswidth': spotter.mirrorScale[0]*100, 
                 'ringsheight': spotter.mirrorScale[1]*100, 
                 'ringsleft': spotter.mirrorTranslate[0], 
@@ -189,7 +204,8 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
         if self.oldMirror != newMirror:
             # corrected mirror coordinates in percent to stream
             if newMirror:
-                rings = [self.rectPercent(ring) for ring in self.target.getRingBounds(newMirror)]
+                target.mirrorBounds = newMirror # update mirror bounds
+                rings = [self.rectPercent(ring) for ring in target.ringBounds]
             else:
                 rings = []
             eventData.update({'rings': rings})
@@ -198,7 +214,8 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
     
 
     def marksEvent(self, eventData):
-        marksHash = hash(tuple(spotter.marks) if spotter.state == State.DETECT else None) # to detect changed mark list
+        # changed mark list
+        marksHash = hash(tuple(spotter.marks) if spotter.state == State.DETECT else None)
         if self.oldMarks != marksHash:
             data = []
             # in collect state, get marks
@@ -206,13 +223,21 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
             if mirror and spotter.state == State.DETECT:
                 for pos in spotter.marks:
                     # look up ring for each mark
-                    ring = self.target.pointInRing(pos, mirror, self.muniDia)
+                    ring = target.pointInRing(pos)
                     mark = {
                         'pixpos': {'left': pos[0], 'top': pos[1]}, 
                         'relpos': self.pointPercent(pos), 
                         'ring': ring
                     }
                     data.append(mark)
+                
+                # get mark size
+                p = target.holeSize
+                markSize = self.pixToPercent((p, p))
+                eventData.update({'marksize': {
+                    'width': markSize[0], 
+                    'height': markSize[1]
+                }})
             
             eventData.update({'marks': data})
             self.oldMarks = marksHash
@@ -254,6 +279,12 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
             elif param == 'showdiff':
                 # show normal or diff image
                 spotter.showDiff = value
+            elif param == 'target':
+                # set target type
+                target.fromDatabase(value)
+            elif param == 'markdia':
+                # set mark size
+                target.holeDia = float(value)
             elif param == 'ringswidth':
                 # scale mirror in x
                 spotter.mirrorScale = (float(value)/100, spotter.mirrorScale[1])

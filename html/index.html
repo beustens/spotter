@@ -40,17 +40,32 @@
                         Show difference: <input type="checkbox" name="showdiff" onclick="enterParam(this)">
                     </div>
                 </div>
-                <h3>Ring corrections</h3>
+                <div id="discipline">
+                    <h3>Discipline</h3>
+                    <div class="paramlist">
+                        <div>
+                            Target: <select id="targets" name="target" onchange="enterParam(this)"></select>
+                        </div>
+                        <div>
+                            Munition: <input type="number" name="markdia" min="1" max="20" step="any" onchange="enterParam(this)">
+                        </div>
+                    </div>
+                </div>
+                <div id="ringcorrections" style="display: none;">
+                    <h3>Ring corrections</h3>
+                    <div class="paramlist">
+                        <div>
+                            Width: <input type="number" name="ringswidth" min="50" max="150" onchange="enterParam(this)"><span>Height: </span><input type="number" name="ringsheight" min="50" max="150" onchange="enterParam(this)">
+                        </div>
+                        <div>
+                            Left: <input type="number" name="ringsleft" step="1" onchange="enterParam(this)"><span>Top: </span><input type="number" name="ringstop" step="1" onchange="enterParam(this)">
+                        </div>
+                        <div>
+                            Save for next start: <input type="checkbox" name="saverings" onclick="enterParam(this)">
+                        </div>
+                    </div>
+                </div>
                 <div class="paramlist">
-                    <div>
-                        Width: <input type="number" name="ringswidth" min="50" max="150" onchange="enterParam(this)"><span>Height: </span><input type="number" name="ringsheight" min="50" max="150" onchange="enterParam(this)">
-                    </div>
-                    <div>
-                        Left: <input type="number" name="ringsleft" step="1" onchange="enterParam(this)"><span>Top: </span><input type="number" name="ringstop" step="1" onchange="enterParam(this)">
-                    </div>
-                    <div>
-                        Save for next start: <input type="checkbox" name="saverings" onclick="enterParam(this)">
-                    </div>
                     <div>
                         <input type="button" name="mode" onclick="toggleMode(this)">
                     </div>
