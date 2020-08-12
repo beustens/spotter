@@ -40,7 +40,7 @@
                         Show difference: <input type="checkbox" name="showdiff" onclick="enterParam(this)">
                     </div>
                 </div>
-                <div id="discipline">
+                <div class="previewshow">
                     <h3>Discipline</h3>
                     <div class="paramlist">
                         <div>
@@ -51,7 +51,7 @@
                         </div>
                     </div>
                 </div>
-                <div id="ringcorrections" style="display: none;">
+                <div class="detectshow">
                     <h3>Ring corrections</h3>
                     <div class="paramlist">
                         <div>
@@ -75,19 +75,21 @@
                     <div class="overlay" id="progress"></div>
                 </div>
                 <div class="paramlist" id="infos"></div>
-                <h2>Marks</h2>
-                <div class="scrolllist" id="marklist"></div>
-                <div class="paramlist">
-                    <div>Sum: <span class="statevar" id="ringsum">0</span></div>
-                </div>
-                <div id="markselect" style="display: none;">
-                    <h3>Selected mark</h3>
+                <div class="detectshow">
+                    <h2>Marks</h2>
+                    <div class="scrolllist" id="marklist"></div>
                     <div class="paramlist">
-                        <div>
-                            Left: <input type="number" id="markleft" step="1"><span>Top: </span><input type="number" id="marktop" step="1">
-                        </div>
-                        <div>
-                            <input type="button" value="Correct" onclick="correctMark()"><input type="button" value="Copy" onclick="copyMark()"><input type="button" value="Delete" onclick="deleteMark()">
+                        <div>Sum: <span class="statevar" id="ringsum">0</span></div>
+                    </div>
+                    <div id="markselect" style="display: none;">
+                        <h3>Selected mark</h3>
+                        <div class="paramlist">
+                            <div>
+                                Left: <input type="number" id="markleft" step="1"><span>Top: </span><input type="number" id="marktop" step="1">
+                            </div>
+                            <div>
+                                <input type="button" value="Correct" onclick="correctMark()"><input type="button" value="Copy" onclick="copyMark()"><input type="button" value="Delete" onclick="deleteMark()">
+                            </div>
                         </div>
                     </div>
                 </div>

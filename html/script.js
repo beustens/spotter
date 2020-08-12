@@ -123,20 +123,14 @@ function parseState(data) {
         msgEle.style.display = "none";
     }
 
-    // show or hide state specific settings
-    // discipline in preview state
-    const disciplineEle = document.getElementById("discipline");
-    if (data.state == "PREVIEW") {
-        disciplineEle.style.display = "block";
-    } else {
-        disciplineEle.style.display = "none";
+    // show or hide state specific elements
+    // show in preview state
+    for (const ele of document.getElementsByClassName("previewshow")) {
+        ele.style.display = (data.state == "PREVIEW") ? "initial" : "none";
     }
-    // ring corrections in detect state
-    const ringcorrEle = document.getElementById("ringcorrections");
-    if (data.state == "DETECT") {
-        ringcorrEle.style.display = "block";
-    } else {
-        ringcorrEle.style.display = "none";
+    // show in detect state
+    for (const ele of document.getElementsByClassName("detectshow")) {
+        ele.style.display = (data.state == "DETECT") ? "initial" : "none";
     }
 }
 
