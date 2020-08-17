@@ -22,7 +22,6 @@ target = Target(name='100 m Gewehr, 25 m Pistole', holeDia=5.5)
 
 class StreamingHandler(server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        log.warning('Creating new Streaming Handler')
         self.oldStreamImage = None
         self.oldState = None
         self.oldFrameCnt = None
