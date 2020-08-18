@@ -36,7 +36,7 @@ class FrameAnalysis(PiYUVAnalysis):
         self.state = State.PREVIEW # do not average and detect changes yet
 
         # mirror detection related
-        self.mirrorTolerance = 10 # tolerance to find mirror pixels from center luminance
+        self.mirrorTolerance = 5 # tolerance to find mirror pixels from center luminance
         self.mirrorPickSize = 20 # center size (width and height) in pixels to pick luminance
         self.paperScale = 3. # overall paper is that much larger than mirror
         self.mirrorScale = (1., 1.) # scale corrections of mirror bounds
@@ -61,6 +61,7 @@ class FrameAnalysis(PiYUVAnalysis):
         Resets analysis results
         '''
         log.debug('Resetting analysis results and marks')
+        self.pickBounds = None
         self.slot = Slot()
         self.slots = deque(maxlen=self.maxSlots)
         self.analysis = None # last analysis
@@ -80,23 +81,27 @@ class FrameAnalysis(PiYUVAnalysis):
 
         if self.state == State.PREVIEW:
             # in preview state, output uncropped frame
+            self.streamDims = frame.shape[::-1]
             self.makeStreamImage(frame[::2, ::2] if self.halfPreviewRes else frame)
         elif self.state == State.START:
-            # reset analysis results and marks
-            self.reset()
+            self.reset() # reset analysis results and marks
+            
             # detect mirror
+            log.info('Detecting mirror')
+            self.pickBounds = self.findMirror(frame)
+            log.debug(f'Mirror bounds in camera frame: {self.pickBounds}')
+            if self.pickBounds.width == 0 or self.pickBounds.height == 0:
+                log.error(f'Could not detect mirror correctly')
+                self.pickBounds = self.artificalMirror(frame)
+            
+            # reset if wanted
             if not self.keepMirror:
                 log.debug('Resetting mirror transformation')
                 self.mirrorScale = (1., 1.)
                 self.mirrorTranslate = (0, 0)
-                log.info('Detecting mirror')
-                pickBounds = self.findMirror(frame)
-                log.debug(f'Mirror bounds in camera frame: {pickBounds}')
-                if pickBounds.width == 0 or pickBounds.height == 0:
-                    log.error(f'Could not detect mirror correctly')
-                    pickBounds = self.artificalMirror(frame)
-                self.cropBounds = pickBounds.scaled(self.paperScale).minimized(frame)
-                self.mirrorBounds = pickBounds.relativeTo(self.cropBounds)
+                self.cropBounds = self.pickBounds.scaled(self.paperScale).minimized(frame)
+                self.mirrorBounds = self.pickBounds.relativeTo(self.cropBounds)
+            
             # proceed with next state
             log.info('Collecting frames')
             self.state = State.COLLECT
@@ -105,6 +110,7 @@ class FrameAnalysis(PiYUVAnalysis):
             # crop frame
             frame = self.crop(frame, self.cropBounds)
             frame = frame.astype(np.int16, copy=False)
+            
             # add frame to current slot
             log.debug(f'Adding frame {self.slot.length+1}/{self.nSlotFrames} to slot')
             self.slot.add(frame)
@@ -114,6 +120,7 @@ class FrameAnalysis(PiYUVAnalysis):
                 if self.cycleSlots(self.slot):
                     # all slots filles and ready for analysis
                     self.state = State.DETECT
+                    
                     # analyse for differences between newest and oldest slot
                     log.debug('Comparing newest to oldest slot')
                     self.analysis = Analysis(self.slots[0], self.slots[-1], self.thresh, self.maxHoleSize)
@@ -131,6 +138,7 @@ class FrameAnalysis(PiYUVAnalysis):
                     
                     # debug display
                     display[self.analysis.mask] = 255
+                    self.streamDims = display.shape[::-1]
                     self.makeStreamImage(display)
         
         self.procTime = time.perf_counter()-startTime
@@ -236,7 +244,6 @@ class FrameAnalysis(PiYUVAnalysis):
 
         :param frame: (h, w) array (int16 grayscale matrix)
         '''
-        self.streamDims = frame.shape[::-1]
         img = frame.astype(np.uint8)
         try:
             self.streamImage = self.imgArrayToImgBytes(img)
