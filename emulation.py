@@ -235,6 +235,11 @@ class VideoPiCamera(Emulator):
             success, img = self.video.read()
             if not success:
                 raise Exception('Cannot read frame from video')
+        
+        # get actual resolution
+        h, w, _ = img.shape
+        self.resolution = (w, h)
+
         # convert to yuv
         img = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
         return img
