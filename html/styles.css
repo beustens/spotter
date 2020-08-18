@@ -132,6 +132,7 @@ input[type="button"]:hover {
     padding: 0.5em;
     font-size: 1.5em;
     border-radius: 0.5em;
+    box-shadow: 0 0.25em 0.75em #00000030;
 }
 
 input + span {
