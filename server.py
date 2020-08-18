@@ -188,10 +188,8 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
             
             # put in mirror picker size
             if spotter.state == State.PREVIEW:
-                picker = {
-                    'width': 100*spotter.mirrorPickSize/camera.resolution[0], 
-                    'height': 100*spotter.mirrorPickSize/camera.resolution[1]
-                }
+                w, h = self.pixToPercent((spotter.mirrorPickSize, spotter.mirrorPickSize))
+                picker = {'width': w, 'height': h}
                 data.update({'pickersize': picker})
             
             eventData.update({'state': data})
@@ -199,7 +197,13 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
     
 
     def ringsEvent(self, eventData):
-        newMirror = spotter.corrMirrorBounds if spotter.state == State.DETECT else None
+        if spotter.state == State.DETECT:
+            newMirror = spotter.corrMirrorBounds
+        elif spotter.state == State.COLLECT:
+            newMirror = spotter.pickBounds
+        else:
+            newMirror = None
+        
         if self.oldMirror != newMirror:
             # corrected mirror coordinates in percent to stream
             if newMirror:
