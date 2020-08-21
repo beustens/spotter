@@ -90,18 +90,19 @@ class FrameAnalysis(PiYUVAnalysis):
             log.info('Detecting mirror')
             self.pickBounds = self.findMirror(frame)
             log.debug(f'Mirror bounds in camera frame: {self.pickBounds}')
-            if self.pickBounds.width == 0 or self.pickBounds.height == 0 or self.pickBounds.height*self.paperScale > frame.shape[0] or self.pickBounds.width*self.paperScale > frame.shape[1]:
+            cropBounds = self.pickBounds.scaled(self.paperScale)
+            if self.pickBounds.width == 0 or self.pickBounds.height == 0 or cropBounds.left < 0 or cropBounds.right > frame.shape[1] or cropBounds.top < 0 or cropBounds.bottom > frame.shape[0]:
                 log.error(f'Could not detect mirror correctly')
                 self.pickBounds = self.artificalMirror(frame)
             
             # reset if wanted
-            if not self.keepMirror:
+            if not self.keepMirror or self.cropBounds is None:
                 log.debug('Resetting mirror transformation')
                 self.mirrorScale = (1., 1.)
                 self.mirrorTranslate = (0, 0)
-                self.cropBounds = self.pickBounds.scaled(self.paperScale).minimized(frame)
+                self.cropBounds = cropBounds
                 self.mirrorBounds = self.pickBounds.relativeTo(self.cropBounds)
-            
+
             # proceed with next state
             log.info('Collecting frames')
             self.state = State.COLLECT
@@ -119,6 +120,7 @@ class FrameAnalysis(PiYUVAnalysis):
                 log.debug('Cycling slot')
                 if self.cycleSlots(self.slot):
                     # all slots filles and ready for analysis
+                    self.streamDims = frame.shape[::-1]
                     self.state = State.DETECT
                     
                     # analyse for differences between newest and oldest slot
@@ -138,7 +140,6 @@ class FrameAnalysis(PiYUVAnalysis):
                     
                     # debug display
                     display[self.analysis.mask] = 255
-                    self.streamDims = display.shape[::-1]
                     self.makeStreamImage(display)
         
         self.procTime = time.perf_counter()-startTime
@@ -380,21 +381,6 @@ class Rect:
         :returns: new relative Rect object
         '''
         return self.moved(-ref.left, -ref.top)
-    
-
-    def minimized(self, frame):
-        '''
-        Shrinks to fit on frame
-
-        :param frame: (h, w) array (int16 grayscale matrix)
-        :returns: new minimized Rect object
-        '''
-        # ensure rect is in bounds of frame
-        top = max(0, self.top)
-        bottom = min(frame.shape[0], self.bottom)
-        left = max(0, self.left)
-        right = min(frame.shape[1], self.right)
-        return Rect(left, right, top, bottom)
 
 
 class Analysis:
