@@ -90,10 +90,14 @@ class FrameAnalysis(PiYUVAnalysis):
             log.info('Detecting mirror')
             self.pickBounds = self.findMirror(frame)
             log.debug(f'Mirror bounds in camera frame: {self.pickBounds}')
+
+            # check if cropping would work
             cropBounds = self.pickBounds.scaled(self.paperScale)
             if self.pickBounds.width == 0 or self.pickBounds.height == 0 or cropBounds.left < 0 or cropBounds.right > frame.shape[1] or cropBounds.top < 0 or cropBounds.bottom > frame.shape[0]:
                 log.error(f'Could not detect mirror correctly')
+                # correct
                 self.pickBounds = self.squareBounds(frame, 0.25)
+                cropBounds = self.pickBounds.scaled(self.paperScale)
             
             # reset if wanted
             if not self.keepMirror or self.cropBounds is None:
