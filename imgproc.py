@@ -90,7 +90,7 @@ class FrameAnalysis(PiYUVAnalysis):
             log.info('Detecting mirror')
             self.pickBounds = self.findMirror(frame)
             log.debug(f'Mirror bounds in camera frame: {self.pickBounds}')
-            if self.pickBounds.width == 0 or self.pickBounds.height == 0:
+            if self.pickBounds.width == 0 or self.pickBounds.height == 0 or self.pickBounds.height*self.paperScale > frame.shape[0] or self.pickBounds.width*self.paperScale > frame.shape[1]:
                 log.error(f'Could not detect mirror correctly')
                 self.pickBounds = self.artificalMirror(frame)
             
