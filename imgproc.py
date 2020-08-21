@@ -93,7 +93,7 @@ class FrameAnalysis(PiYUVAnalysis):
             cropBounds = self.pickBounds.scaled(self.paperScale)
             if self.pickBounds.width == 0 or self.pickBounds.height == 0 or cropBounds.left < 0 or cropBounds.right > frame.shape[1] or cropBounds.top < 0 or cropBounds.bottom > frame.shape[0]:
                 log.error(f'Could not detect mirror correctly')
-                self.pickBounds = self.artificalMirror(frame)
+                self.pickBounds = self.squareBounds(frame, 0.25)
             
             # reset if wanted
             if not self.keepMirror or self.cropBounds is None:
@@ -188,12 +188,12 @@ class FrameAnalysis(PiYUVAnalysis):
         return Rect(xMin, xMax, yMin, yMax)
     
 
-    def artificalMirror(self, frame, widthRatio=0.2):
+    def squareBounds(self, frame, heightRatio):
         '''
-        Makes bounds of estimated mirror based on relative width
+        Makes a square bound in center based on relative height of a frame
         '''
         frameRect = Rect(0, frame.shape[1], 0, frame.shape[0])
-        radius = int(widthRatio*frameRect.width/2)
+        radius = int(heightRatio*frameRect.height/2)
         mid = frameRect.center
         return Rect(mid[0]-radius, mid[0]+radius, mid[1]-radius, mid[1]+radius)
     
