@@ -16,9 +16,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-e', '--emulate', help='Generates artificial frames instead of using the pi camera', action='store_true')
 parser.add_argument('-v', '--video', help='Optional path to a video file to use its frames instead of the pi camera', default='')
 # evaluate arguments
-args = parser.parse_args()
+clargs = parser.parse_args()
 
-emulated = args.emulate
+emulated = clargs.emulate
 
 
 class Emulator:
@@ -27,8 +27,8 @@ class Emulator:
 
     Note: Does not support original features
     '''
-    def __init__(self):
-        self.resolution = (1920, 1080)
+    def __init__(self, resolution, *args, **kwargs):
+        self.resolution = resolution
         self.normContrast = 1. # 0...2
         self.normBrightness = 0. # -1...1
         self.fakeFPS = 15
@@ -128,8 +128,8 @@ class ArtificialPiCamera(Emulator):
     '''
     Generates fake images based on algorithm
     '''
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.mirrorRatio = 0.1 # radius as ratio to image width
         self.paperSize = 3*self.mirrorRatio
         self.holeRatio = 0.005 # radius as ratio to image with
@@ -220,9 +220,9 @@ class VideoPiCamera(Emulator):
     '''
     Streams fake images from video
     '''
-    def __init__(self):
-        super().__init__()
-        self.video = cv2.VideoCapture(args.video)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.video = cv2.VideoCapture(clargs.video)
     
 
     def generateImage(self):
@@ -245,7 +245,7 @@ class VideoPiCamera(Emulator):
         return img
 
 
-class PiCamera(VideoPiCamera if args.video else ArtificialPiCamera):
+class PiCamera(VideoPiCamera if clargs.video else ArtificialPiCamera):
     pass
 
 
