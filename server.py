@@ -39,7 +39,8 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
 
         :param pix: (x, y) pixel values
         '''
-        return (100*pix[0]/spotter.streamDims[0], 100*pix[1]/spotter.streamDims[1])
+        dims = camera.resolution if spotter.state == State.PREVIEW else spotter.streamDims
+        return (100*pix[0]/dims[0], 100*pix[1]/dims[1])
     
 
     def pointPercent(self, point):
