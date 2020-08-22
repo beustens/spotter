@@ -23,21 +23,8 @@ class Target:
             self.fromDatabase(name)
         else:
             raise ValueError('Provide either data dictionary or target number')
-        self._mirrorBounds = None # mirror Rect in pixels
-    
-
-    @property
-    def mirrorBounds(self):
-        if self._mirrorBounds is None:
-            raise AttributeError('Mirror bounds not set')
-
-        return self._mirrorBounds
-    
-
-    @mirrorBounds.setter
-    def mirrorBounds(self, val):
-        if val is not None:
-            self._mirrorBounds = val
+        
+        self.mirrorBounds = None # mirror Rect in pixels
     
 
     def makeRings(self, data):
