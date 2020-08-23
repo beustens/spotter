@@ -145,8 +145,8 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                 'showdiff': spotter.showDiff, 
                 'target': target.name, 
                 'markdia': target.holeDia, 
-                'ringswidth': spotter.mirrorScale[0]*100, 
-                'ringsheight': spotter.mirrorScale[1]*100, 
+                'ringswidth': spotter.mirrorScale[0]*100-100, 
+                'ringsheight': spotter.mirrorScale[1]*100-100, 
                 'ringsleft': spotter.mirrorTranslate[0], 
                 'ringstop': spotter.mirrorTranslate[1], 
                 'saverings': spotter.keepMirror, 
@@ -291,10 +291,10 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                 target.holeDia = float(value)
             elif param == 'ringswidth':
                 # scale mirror in x
-                spotter.mirrorScale = (float(value)/100, spotter.mirrorScale[1])
+                spotter.mirrorScale = ((float(value)+100)/100, spotter.mirrorScale[1])
             elif param == 'ringsheight':
                 # scale mirror in y
-                spotter.mirrorScale = (spotter.mirrorScale[0], float(value)/100)
+                spotter.mirrorScale = (spotter.mirrorScale[0], (float(value)+100)/100)
             elif param == 'ringsleft':
                 # move mirror in x
                 spotter.mirrorTranslate = (int(value), spotter.mirrorTranslate[1])
