@@ -420,7 +420,7 @@ class Analysis:
                 self.valid = True
                 self.result = 'valid change'
             else:
-                log.info('Too many pixels changed')
+                log.warning('Too many pixels changed')
                 self.result = 'too much change'
         else:
             self.result = 'no change'
