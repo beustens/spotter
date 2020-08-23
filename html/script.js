@@ -115,18 +115,14 @@ function parseState(data) {
         pickerEle.style.display = "none";
     }
 
-    // configure message
-    const msgEle = document.getElementById("message");
-    if (data.state == "COLLECT") {
-        msgEle.style.display = "block";
-    } else {
-        msgEle.style.display = "none";
-    }
-
     // show or hide state specific elements
     // show in preview state
     for (const ele of document.getElementsByClassName("previewshow")) {
         ele.style.display = (data.state == "PREVIEW") ? "initial" : "none";
+    }
+    // show in collect state
+    for (const ele of document.getElementsByClassName("collectshow")) {
+        ele.style.display = (data.state == "COLLECT") ? "initial" : "none";
     }
     // show in detect state
     for (const ele of document.getElementsByClassName("detectshow")) {
