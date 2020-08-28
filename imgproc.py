@@ -36,11 +36,12 @@ class FrameAnalysis(PiYUVAnalysis):
         self.state = State.PREVIEW # do not average and detect changes yet
 
         # mirror detection related
-        self.mirrorTolerance = 5 # tolerance to find mirror pixels from center luminance
+        self.mirrorTolerance = 10 # tolerance to find mirror pixels from center luminance
         self.mirrorPickSize = 20 # center size (width and height) in pixels to pick luminance
         self.paperScale = 3. # overall paper is that much larger than mirror
         self.mirrorScale = (1., 1.) # scale corrections of mirror bounds
         self.mirrorTranslate = (0, 0) # position corrections of mirror bounds
+        self.pickBounds = None
         self.cropBounds = None
         self.mirrorBounds = None
         self.keepMirror = False
@@ -61,7 +62,6 @@ class FrameAnalysis(PiYUVAnalysis):
         Resets analysis results
         '''
         log.debug('Resetting analysis results and marks')
-        self.pickBounds = None
         self.slot = Slot()
         self.slots = deque(maxlen=self.maxSlots)
         self.analysis = None # last analysis
@@ -86,25 +86,22 @@ class FrameAnalysis(PiYUVAnalysis):
         elif self.state == State.START:
             self.reset() # reset analysis results and marks
             
-            # detect mirror
-            log.info('Detecting mirror')
-            self.pickBounds = self.findMirror(frame)
-            log.debug(f'Mirror bounds in camera frame: {self.pickBounds}')
-
-            # check if cropping would work
-            cropBounds = self.pickBounds.scaled(self.paperScale)
-            if self.pickBounds.width == 0 or self.pickBounds.height == 0 or cropBounds.left < 0 or cropBounds.right > frame.shape[1] or cropBounds.top < 0 or cropBounds.bottom > frame.shape[0]:
-                log.error(f'Could not detect mirror correctly')
-                # correct
-                self.pickBounds = self.squareBounds(frame, 0.25)
-                cropBounds = self.pickBounds.scaled(self.paperScale)
-            
             # reset if wanted
             if not self.keepMirror or self.cropBounds is None:
+                # detect mirror
+                log.info('Detecting mirror')
+                self.pickBounds = self.findMirror(frame)
+                log.debug(f'Mirror bounds in camera frame: {self.pickBounds}')
+
+                # check if picked size is realistic
+                if self.pickBounds.width < 0.05*frame.shape[1] or self.pickBounds.height < 0.05*frame.shape[0] or self.pickBounds.width > 0.8*frame.shape[1] or self.pickBounds.height > 0.8*frame.shape[0]:
+                    log.error(f'Could not detect mirror correctly')
+                    self.pickBounds = self.squareBounds(frame, 0.25) # made up
+                
                 log.debug('Resetting mirror transformation')
                 self.mirrorScale = (1., 1.)
                 self.mirrorTranslate = (0, 0)
-                self.cropBounds = cropBounds
+                self.cropBounds = self.pickBounds.scaled(self.paperScale).clamped(frame)
                 self.mirrorBounds = self.pickBounds.relativeTo(self.cropBounds)
 
             # proceed with next state
@@ -167,6 +164,9 @@ class FrameAnalysis(PiYUVAnalysis):
         :param frame: (h, w) array (int16 grayscale matrix)
         :returns: Rect object of mirror bounds in frame
         '''
+        # blur to remove rings
+        frame = ndimage.gaussian_filter(frame, 2)
+
         # pick center luminance
         iRow = int(frame.shape[0]/2) # y
         iCol = int(frame.shape[1]/2) # x
@@ -374,6 +374,20 @@ class Rect:
         right = self.right+x
         top = self.top+y
         bottom = self.bottom+y
+        return Rect(left, right, top, bottom)
+    
+
+    def clamped(self, frame):
+        '''
+        Limits rect to frame dimensions
+
+        :param frame: (h, w) array (int16 grayscale matrix)
+        :returns: new clamped Rect oject
+        '''
+        left = max(self.left, 0)
+        right = min(self.right, frame.shape[1])
+        top = max(self.top, 0)
+        bottom = min(self.bottom, frame.shape[0])
         return Rect(left, right, top, bottom)
     
 
