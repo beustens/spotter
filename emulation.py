@@ -187,12 +187,13 @@ class ArtificialPiCamera(Emulator):
         '''
         :returns: fake image of paper and mirror
         '''
-        img = np.copy(self.baseImage)
         # make hole
         now = time.time()
         if now >= self.holeTime:
             self.holeTime = now+self.holePeriod
-            self.makeHole(img)
+            self.makeHole(self.baseImage)
+        
+        img = np.copy(self.baseImage)
         
         # add noise
         noise = np.random.normal(scale=0.1, size=(self.height, self.width))
