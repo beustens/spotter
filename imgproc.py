@@ -404,17 +404,58 @@ class Analysis:
     '''
     def __init__(self, newSlot, oldSlot, thresh, maxSize=100):
         '''
-        :param newSlot/oldSlot: slots
+        :param newSlot/oldSlot: Slots objects
         :param thresh: threshold (0...255) to detect changes between averaged slot frames
         :param maxSize: maximum width/height of difference detection area in pixel
         '''
+        self.thresh = thresh
+        self.maxSize = maxSize
+
+        newFrame = newSlot.mean
+        oldFrame = oldSlot.mean
+
+        diff = newFrame-oldFrame
+        self.analyzeDiff(diff)
+
+        # check for too much movement and try to solve by tracking
+        if self.result == 'too much change':
+            # describe feature matrix bounds
+            dims = oldSlot.mean.shape
+            size = 30 # feature width and height
+            pos = (dims[1]//2, dims[0]//2-size) # feature center position
+            featureBounds = Rect(pos[0]-size//2, pos[0]+size//2, pos[1]-size//2, pos[1]+size//2)
+            
+            # track (camera pitch vibrations in the first place)
+            searchV = 20 # +/- search range in vertical direction
+            searchH = 8 # +/- search range in horizontal direction
+            log.debug('Tracking movement')
+            matchBounds = self.track(newFrame, oldFrame, featureBounds, (searchH, searchV)) # track
+            shift = (matchBounds.center[0]-featureBounds.center[0], matchBounds.center[1]-featureBounds.center[1])
+            log.info(f'Movement between slots: {shift}')
+
+            # correct by moving old in direction of tracking
+            log.debug('Correcting and analyzing again')
+            oldRolled = np.roll(oldFrame, shift[::-1], (0, 1))
+            diff = np.abs(newFrame-oldRolled) # compare old with new
+            xBorder, yBorder = abs(shift[0]), abs(shift[1])
+            # zero write rolled areas
+            diff[:yBorder, :] = 0
+            diff[:, :xBorder] = 0
+            diff[-yBorder:, :] = 0
+            diff[:, -xBorder:] = 0
+
+            self.analyzeDiff(diff)
+    
+
+    def analyzeDiff(self, diff):
+        '''
+        Analyzes the difference between 2 frames
+        '''
         self.valid = False
         self.result = ''
-        
-        # mask
-        diff = newSlot.mean-oldSlot.mean
+
         self.diff = ndimage.gaussian_filter(diff, 2) # to eliminate outliers
-        self.mask = self.diff < -thresh
+        self.mask = self.diff < -self.thresh
         iMask = np.argwhere(self.mask )
         nChange = len(iMask)
         if nChange > 0:
@@ -427,7 +468,7 @@ class Analysis:
             self.rect = Rect(xMin, xMax, yMin, yMax)
             log.debug(f'Change width: {self.rect.width}, height: {self.rect.height}')
             # check valid size
-            if self.rect.width < maxSize and self.rect.height < maxSize:
+            if self.rect.width < self.maxSize and self.rect.height < self.maxSize:
                 self.valid = True
                 self.result = 'valid change'
             else:
@@ -435,6 +476,38 @@ class Analysis:
                 self.result = 'too much change'
         else:
             self.result = 'no change'
+    
+
+    def track(self, searchFrame, baseFrame, featureBounds, searchRadius=(10, 10)):
+        '''
+        Tries to find movement between frames
+
+        :param searchFrame/baseFrame: (h, w) array (int16 grayscale matrix)
+        :param featureBounds: Rect object describing the bounds in baseFrame 
+            of the feature matrix to search in searchFrame
+        :param searchRadius: +/- x and y ranges to search
+        :returns: rect object of the estimated match of featureBounds in searchFrame
+        '''
+        # get crop from old frame
+        base = baseFrame[featureBounds.top:featureBounds.bottom, featureBounds.left:featureBounds.right]
+
+        # search
+        bestCrop = featureBounds
+        bestMatch = 1e6
+        xRange = range(-searchRadius[0], searchRadius[0])
+        yRange = range(-searchRadius[1], searchRadius[1])
+        for yMove in yRange:
+            for xMove in xRange:
+                # get crop of frame to search in
+                crop = featureBounds.moved(xMove, yMove)
+                lookup = searchFrame[crop.top:crop.bottom, crop.left:crop.right]
+                # metric for match
+                match = np.sum(np.abs(lookup-base))
+                if match < bestMatch:
+                    bestMatch = match
+                    bestCrop = crop
+        
+        return bestCrop
     
 
     def __repr__(self):
