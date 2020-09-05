@@ -30,7 +30,7 @@ class FrameAnalysis(PiYUVAnalysis):
         self.frameCnt = 0
         self.streamDims = self.camera.resolution # width, height in pixels of current background
         self.streamImage = bytes()
-        self.halfPreviewRes = True # cutting preview stream image resolution to save time
+        self.lowPreviewRes = True # cutting preview stream image resolution to save time
         self.procTime = 0.
         self.showDiff = False # show amplified diff instead of the camera frames
         self.state = State.PREVIEW # do not average and detect changes yet
@@ -82,7 +82,19 @@ class FrameAnalysis(PiYUVAnalysis):
         if self.state == State.PREVIEW:
             # in preview state, output uncropped frame
             self.streamDims = frame.shape[::-1]
-            self.makeStreamImage(frame[::2, ::2] if self.halfPreviewRes else frame)
+            if self.lowPreviewRes:
+                # low resolution
+                prev = frame[::3, ::3]
+                # picture in picture
+                y = frame.shape[0]//2
+                x = frame.shape[1]//2
+                size = 150
+                half = size//2
+                prev[:size, :size] = frame[y-half:y+half, x-half:x+half]
+            else:
+                # normal, full resolution
+                prev = frame
+            self.makeStreamImage(prev)
         elif self.state == State.START:
             self.reset() # reset analysis results and marks
             
