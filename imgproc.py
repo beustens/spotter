@@ -421,12 +421,12 @@ class Analysis:
         if self.result == 'too much change':
             # describe feature matrix bounds
             dims = oldSlot.mean.shape
-            size = 30 # feature width and height
+            size = 40 # feature width and height
             pos = (dims[1]//2, dims[0]//2-size) # feature center position
             featureBounds = Rect(pos[0]-size//2, pos[0]+size//2, pos[1]-size//2, pos[1]+size//2)
             
             # track (camera pitch vibrations in the first place)
-            searchV = 30 # +/- search range in vertical direction
+            searchV = 20 # +/- search range in vertical direction
             searchH = 10 # +/- search range in horizontal direction
             log.debug('Tracking movement')
             matchBounds = self.track(newFrame, oldFrame, featureBounds, (searchH, searchV)) # track
