@@ -39,7 +39,13 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
 
         :param pix: (x, y) pixel values
         '''
-        dims = camera.resolution if spotter.state == State.PREVIEW else spotter.streamDims
+        if spotter.state == State.PREVIEW:
+            # workaround
+            height = camera.resolution[0]
+            dims = (height, height)
+        else:
+            dims = spotter.streamDims
+        
         return (100*pix[0]/dims[0], 100*pix[1]/dims[1])
     
 

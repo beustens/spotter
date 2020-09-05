@@ -79,21 +79,14 @@ class FrameAnalysis(PiYUVAnalysis):
         # convert camera image to grayscale frame matrix
         frame = img[:, :, 0] # get luminance channel of YUV
 
+        # make square
+        halfH, halfW = frame.shape[0]//2, frame.shape[1]//2
+        frame = frame[:, halfW-halfH:halfW+halfH]
+
         if self.state == State.PREVIEW:
             # in preview state, output uncropped frame
             self.streamDims = frame.shape[::-1]
-            if self.lowPreviewRes:
-                # low resolution
-                prev = frame[::3, ::3]
-                # picture in picture
-                y = frame.shape[0]//2
-                x = frame.shape[1]//2
-                size = 150
-                half = size//2
-                prev[:size, :size] = frame[y-half:y+half, x-half:x+half]
-            else:
-                # normal, full resolution
-                prev = frame
+            prev = frame[::2, ::2] if self.lowPreviewRes else frame
             self.makeStreamImage(prev)
         elif self.state == State.START:
             self.reset() # reset analysis results and marks
