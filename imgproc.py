@@ -426,8 +426,8 @@ class Analysis:
             featureBounds = Rect(pos[0]-size//2, pos[0]+size//2, pos[1]-size//2, pos[1]+size//2)
             
             # track (camera pitch vibrations in the first place)
-            searchV = 20 # +/- search range in vertical direction
-            searchH = 8 # +/- search range in horizontal direction
+            searchV = 30 # +/- search range in vertical direction
+            searchH = 10 # +/- search range in horizontal direction
             log.debug('Tracking movement')
             matchBounds = self.track(newFrame, oldFrame, featureBounds, (searchH, searchV)) # track
             shift = (matchBounds.center[0]-featureBounds.center[0], matchBounds.center[1]-featureBounds.center[1])
