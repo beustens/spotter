@@ -164,9 +164,6 @@ class FrameAnalysis(PiYUVAnalysis):
         :param frame: (h, w) array (int16 grayscale matrix)
         :returns: Rect object of mirror bounds in frame
         '''
-        # blur to remove rings
-        frame = ndimage.gaussian_filter(frame, 2)
-
         # pick center luminance
         iRow = int(frame.shape[0]/2) # y
         iCol = int(frame.shape[1]/2) # x
