@@ -337,7 +337,7 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
 
 
 if __name__ == '__main__':
-    with PiCamera(resolution=(1920, 1080), framerate_range=(0.1, 30)) as camera:
+    with PiCamera(resolution=(1920, 1080), framerate_range=(3, 30)) as camera:
         camera.meter_mode = 'spot'
         camera.exposure_mode = 'verylong'
         with FrameAnalysis(camera) as spotter:
