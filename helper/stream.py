@@ -9,9 +9,11 @@ PAGE="""\
 <html>
 <head>
 <title>picamera MJPEG streaming demo</title>
+<style>
+html, body {margin: 0; padding: 0; height: 100%; width: 100%;}
+</style>
 </head>
 <body>
-<h1>PiCamera MJPEG Streaming Demo</h1>
 <img src="stream.mjpg" width="100%"/>
 </body>
 </html>
