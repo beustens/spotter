@@ -115,7 +115,7 @@ class FrameAnalysis(PiYUVAnalysis):
         else:
             # COLLECT or DETECT state
             # crop frame
-            frame = self.crop(frame, self.cropBounds)
+            frame = self.cropBounds.crop(frame)
             frame = frame.astype(np.int16, copy=False)
             
             # add frame to current slot
@@ -149,17 +149,6 @@ class FrameAnalysis(PiYUVAnalysis):
                     self.makeStreamImage(display)
         
         self.procTime = time.perf_counter()-startTime
-    
-
-    def crop(self, frame, rect):
-        '''
-        Crops a frame by rect
-
-        :param frame: (h, w) array
-        :param rect: Rect object
-        :returns: cropped frame
-        '''
-        return frame[rect.top:rect.bottom, rect.left:rect.right]
     
     
     def findMirror(self, frame):
@@ -401,6 +390,16 @@ class Rect:
         :returns: new relative Rect object
         '''
         return self.moved(-ref.left, -ref.top)
+    
+
+    def crop(self, frame):
+        '''
+        Crops a frame
+
+        :param frame: (h, w) array (int16 grayscale matrix)
+        :returns: cropped frame section
+        '''
+        return frame[self.top:self.bottom, self.left:self.right]
 
 
 class Analysis:
@@ -426,13 +425,13 @@ class Analysis:
         if self.result == 'too much change':
             # describe feature matrix bounds
             dims = oldSlot.mean.shape
-            size = 40 # feature width and height
+            size = 30 # feature width and height
             pos = (dims[1]//2, dims[0]//2-size) # feature center position
             featureBounds = Rect(pos[0]-size//2, pos[0]+size//2, pos[1]-size//2, pos[1]+size//2)
             
             # track (camera pitch vibrations in the first place)
-            searchV = 20 # +/- search range in vertical direction
-            searchH = 10 # +/- search range in horizontal direction
+            searchV = 15 # +/- search range in vertical direction
+            searchH = 5 # +/- search range in horizontal direction
             log.debug('Tracking movement')
             matchBounds = self.track(newFrame, oldFrame, featureBounds, (searchH, searchV)) # track
             shift = (matchBounds.center[0]-featureBounds.center[0], matchBounds.center[1]-featureBounds.center[1])
@@ -444,10 +443,10 @@ class Analysis:
             diff = np.abs(newFrame-oldRolled) # compare old with new
             xBorder, yBorder = abs(shift[0]), abs(shift[1])
             # zero write rolled areas
-            diff[:yBorder, :] = 0
-            diff[:, :xBorder] = 0
-            diff[-yBorder:, :] = 0
-            diff[:, -xBorder:] = 0
+            diff[:yBorder, :] = 0 # top border
+            diff[:, :xBorder] = 0 # left border
+            diff[diff.shape[0]-yBorder:, :] = 0 # bottom border
+            diff[:, diff.shape[1]-xBorder:] = 0 # right border
 
             self.analyzeDiff(diff)
     
@@ -494,25 +493,25 @@ class Analysis:
         :returns: rect object of the estimated match of featureBounds in searchFrame
         '''
         # get crop from old frame
-        base = baseFrame[featureBounds.top:featureBounds.bottom, featureBounds.left:featureBounds.right]
+        base = featureBounds.crop(baseFrame)
 
         # search
-        bestCrop = featureBounds
+        bestBounds = featureBounds
         bestMatch = 1e6
         xRange = range(-searchRadius[0], searchRadius[0])
         yRange = range(-searchRadius[1], searchRadius[1])
         for yMove in yRange:
             for xMove in xRange:
                 # get crop of frame to search in
-                crop = featureBounds.moved(xMove, yMove)
-                lookup = searchFrame[crop.top:crop.bottom, crop.left:crop.right]
+                movedBounds = featureBounds.moved(xMove, yMove)
+                lookup = movedBounds.crop(searchFrame)
                 # metric for match
                 match = np.sum(np.abs(lookup-base))
                 if match < bestMatch:
                     bestMatch = match
-                    bestCrop = crop
+                    bestBounds = movedBounds
         
-        return bestCrop
+        return bestBounds
     
 
     def __repr__(self):
