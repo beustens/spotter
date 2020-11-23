@@ -11,6 +11,7 @@ import time # for performance measurement
 from enum import Enum # for states
 from collections import deque # for fast ring buffer
 import logging # for more advanced prints
+from threading import Condition # for notifying when binary image is created
 
 
 log = logging.getLogger(f'spotter_{__name__}')
@@ -30,6 +31,7 @@ class FrameAnalysis(PiYUVAnalysis):
         self.frameCnt = 0
         self.streamDims = self.camera.resolution # width, height in pixels of current background
         self.streamImage = bytes()
+        self.condition = Condition()
         self.lowPreviewRes = True # cutting preview stream image resolution to save time
         self.procTime = 0.
         self.showDiff = False # show amplified diff instead of the camera frames
@@ -242,7 +244,9 @@ class FrameAnalysis(PiYUVAnalysis):
         '''
         img = frame.astype(np.uint8)
         try:
-            self.streamImage = self.imgArrayToImgBytes(img)
+            with self.condition:
+                self.streamImage = self.imgArrayToImgBytes(img)
+                self.condition.notify_all()
         except SystemError:
             log.warning('Could not create stream image')
             log.info(f'Image cropping: {self.cropBounds}')

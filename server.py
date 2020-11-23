@@ -22,7 +22,6 @@ target = Target(name='100 m Gewehr, 25 m Pistole', holeDia=5.5)
 
 class StreamingHandler(server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        self.oldStreamImage = None
         self.oldState = None
         self.oldFrameCnt = None
         self.oldMirror = None
@@ -105,16 +104,15 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
             try:
                 while True:
                     # update stream image
-                    if self.oldStreamImage != spotter.streamImage:
-                        self.wfile.write(b'--FRAME\n')
-                        self.send_header('Content-Type', 'image/jpeg')
-                        self.send_header('Content-Length', len(spotter.streamImage))
-                        self.end_headers()
-                        self.wfile.write(spotter.streamImage)
-                        self.wfile.write(b'\n\n')
-                        self.oldStreamImage = spotter.streamImage
-                    
-                    time.sleep(0.05) # reduce idle load
+                    with spotter.condition:
+                        spotter.condition.wait()
+                        frame = spotter.streamImage
+                    self.wfile.write(b'--FRAME\n')
+                    self.send_header('Content-Type', 'image/jpeg')
+                    self.send_header('Content-Length', len(frame))
+                    self.end_headers()
+                    self.wfile.write(frame)
+                    self.wfile.write(b'\n\n')
             except BrokenPipeError:
                 log.info(f'Removed streaming client {self.client_address}')
         elif '/change' in self.path:
@@ -127,8 +125,10 @@ class StreamingHandler(server.SimpleHTTPRequestHandler):
                     self.stateEvent(data)
                     self.ringsEvent(data)
                     self.marksEvent(data)
-                    # send data to client
-                    self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
+                    if data:
+                        # send data to client
+                        self.wfile.write(f'data: {json.dumps(data)}\n\n'.encode())
+                    
                     time.sleep(0.25) # reduce idle load
             except BrokenPipeError:
                 log.info(f'Removed streaming client {self.client_address}')
