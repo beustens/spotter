@@ -31,6 +31,7 @@ class FrameAnalysis(PiYUVAnalysis):
         self.frameCnt = 0
         self.streamDims = self.camera.resolution # width, height in pixels of current background
         self.streamImage = bytes()
+        self.buffer = io.BytesIO()
         self.condition = Condition()
         self.lowPreviewRes = True # cutting preview stream image resolution to save time
         self.procTime = 0.
@@ -69,6 +70,16 @@ class FrameAnalysis(PiYUVAnalysis):
         self.analysis = None # last analysis
         self.detected = []
         self.marks = []
+    
+
+    def write(self, buf):
+        if buf.startswith(b'\xff\xd8'):
+            self.buffer.truncate()
+            with self.condition:
+                self.streamImage = self.buffer.getvalue()
+                self.condition.notify_all()
+            self.buffer.seek(0)
+        return self.buffer.write(buf)
     
 
     def analyse(self, img):
@@ -230,10 +241,10 @@ class FrameAnalysis(PiYUVAnalysis):
         :param filetype: image format string, e.g. "png", "gif", ... default "jpeg"
         :returns: image file bytes
         '''
+        self.buffer.seek(0)
         im = Image.fromarray(img) # create image object
-        buffer = io.BytesIO() # make buffer to simulate file
-        im.save(buffer, filetype) # write image to buffer
-        return buffer.getvalue() # get buffer bytes
+        im.save(self.buffer, filetype) # write image to buffer
+        return self.buffer.getvalue() # get buffer bytes
     
 
     def makeStreamImage(self, frame):
@@ -243,13 +254,9 @@ class FrameAnalysis(PiYUVAnalysis):
         :param frame: (h, w) array (int16 grayscale matrix)
         '''
         img = frame.astype(np.uint8)
-        try:
-            with self.condition:
-                self.streamImage = self.imgArrayToImgBytes(img)
-                self.condition.notify_all()
-        except SystemError:
-            log.warning('Could not create stream image')
-            log.info(f'Image cropping: {self.cropBounds}')
+        with self.condition:
+            self.streamImage = self.imgArrayToImgBytes(img)
+            self.condition.notify_all()
 
 
 class Slot:
