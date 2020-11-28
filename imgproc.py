@@ -56,7 +56,6 @@ class FrameAnalysis(PiYUVAnalysis):
         # hole detection related
         self.thresh = 5 # hole detection sensitivity
         self.maxHoleSize = 20 # maximum expected hole size in width or height pixels
-        self.logThreshRange = True
 
         self.reset()
     
@@ -135,13 +134,10 @@ class FrameAnalysis(PiYUVAnalysis):
                     
                     # analyse for differences between newest and oldest slot
                     log.debug('Comparing newest to oldest slot')
-                    self.analysis = Analysis(self.slots[0], self.slots[-1], self.thresh, self.maxHoleSize)
+                    self.analysis = Analysis(self.slots[0], self.slots[-1], self.thresh, maxSize=self.maxHoleSize)
                     display = np.copy(np.abs(self.analysis.diff*30) if self.showDiff else self.slots[0].mean)
                     if self.analysis.valid:
                         log.info(f'Valid change detected at {self.analysis.rect.center}')
-                        if self.logThreshRange:
-                            minThresh, maxThresh = self.analysis.validThreshRange()
-                            log.info(f'Threshold can be {minThresh}...{maxThresh}')
                         # add detection to mark consideration
                         self.detected.append(self.analysis.rect.center)
                     else:
@@ -417,52 +413,63 @@ class Analysis:
     '''
     Analysis between slots
     '''
-    def __init__(self, newSlot, oldSlot, thresh, maxSize=100):
+    def __init__(self, newSlot, oldSlot, thresh, minSize=3, maxSize=100, maxSquareErr=0.2):
         '''
         :param newSlot/oldSlot: Slots objects
         :param thresh: threshold (0...255) to detect changes between averaged slot frames
-        :param maxSize: maximum width/height of difference detection area in pixel
+        :param minSize: minimum width/height of change mask
+        :param maxSize: maximum width/height of change mask
+        :param maxSquareErr: maximum ratio deviation from square of change mask
         '''
         self.valid = False
         self.thresh = thresh
+        self.minSize = minSize
         self.maxSize = maxSize
+        self.maxSquareErr = maxSquareErr
 
         newFrame = newSlot.mean
         oldFrame = oldSlot.mean
 
         diff = newFrame-oldFrame
-        self.analyzeDiff(diff)
+        self.diff = ndimage.gaussian_filter(diff, 2) # to eliminate outliers
+        self.analyzeDiff()
         
-        if self.result == 'too much change':
+        self.tries = 0
+        while (self.result == 'too much change'):
+            self.tries += 1
             # check for too much movement and try to resolve
-            self.analyzeDiff(diff, sigma=4)
+            self.thresh += 2
+            log.info(f'Increasing threshold to {self.thresh}')
+            self.analyzeDiff()
+        
+        if self.tries > 0 and self.valid:
+            minThresh, _ = self.validThreshRange()
+            self.result = f'Suggested threshold: {int(minThresh)+1}'
     
 
-    def analyzeDiff(self, diff, sigma=2):
+    def analyzeDiff(self):
         '''
-        Analyzes the difference between 2 frames
-
-        :param diff: (h, w) array (int16 grayscale matrix)
-        :param sigma: sigma of gaussian blur on diff for spatial noise reduction
+        Analyzes the self.diff matrix
         '''
         self.valid = False
         self.result = ''
-
-        self.diff = ndimage.gaussian_filter(diff, sigma) # to eliminate outliers
+        
         self.mask = self.diff <= -self.thresh
         iMask = np.argwhere(self.mask )
         nChange = len(iMask)
+        log.debug(f'{nChange} pixels changed')
         if nChange > 0:
-            log.debug(f'{nChange} pixels changed')
             # getting change bounds
             x = iMask[:, 1]
             xMin, xMax = np.min(x), np.max(x)
             y = iMask[:, 0]
             yMin, yMax = np.min(y), np.max(y)
             self.rect = Rect(xMin, xMax, yMin, yMax)
-            log.debug(f'Change width: {self.rect.width}, height: {self.rect.height}')
+            log.info(f'Change width: {self.rect.width}, height: {self.rect.height}')
             # check valid size
-            if self.rect.width <= self.maxSize and self.rect.height <= self.maxSize:
+            ratioErr = abs(1.-self.rect.width/(self.rect.height+1e-6)) # we expect something near square
+            log.info(f'ratioErr: {ratioErr:.2f}')
+            if self.minSize <= self.rect.width <= self.maxSize and self.minSize <= self.rect.height <= self.maxSize and ratioErr < self.maxSquareErr:
                 self.valid = True
                 self.result = 'valid change'
             else:
@@ -480,7 +487,7 @@ class Analysis:
             raise ValueError('Last analyzeDiff did not yield a valid change')
 
         maxThresh = -np.min(self.diff[self.mask])
-        minThresh = -np.min(self.diff[~self.mask])+1
+        minThresh = -np.min(self.diff[~self.mask])
         
         return (minThresh, maxThresh)
     
