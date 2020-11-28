@@ -39,7 +39,7 @@ class FrameAnalysis(PiYUVAnalysis):
         self.state = State.PREVIEW # do not average and detect changes yet
 
         # mirror detection related
-        self.mirrorTolerance = 10 # tolerance to find mirror pixels from center luminance
+        self.mirrorTolerance = 5 # tolerance beyond center luminance range to find mirror pixels
         self.mirrorPickSize = 20 # center size (width and height) in pixels to pick luminance
         self.paperScale = 3. # overall paper is that much larger than mirror
         self.mirrorScale = (1., 1.) # scale corrections of mirror bounds
@@ -56,6 +56,7 @@ class FrameAnalysis(PiYUVAnalysis):
         # hole detection related
         self.thresh = 5 # hole detection sensitivity
         self.maxHoleSize = 20 # maximum expected hole size in width or height pixels
+        self.logThreshRange = True
 
         self.reset()
     
@@ -70,16 +71,6 @@ class FrameAnalysis(PiYUVAnalysis):
         self.analysis = None # last analysis
         self.detected = []
         self.marks = []
-    
-
-    def write(self, buf):
-        if buf.startswith(b'\xff\xd8'):
-            self.buffer.truncate()
-            with self.condition:
-                self.streamImage = self.buffer.getvalue()
-                self.condition.notify_all()
-            self.buffer.seek(0)
-        return self.buffer.write(buf)
     
 
     def analyse(self, img):
@@ -148,6 +139,9 @@ class FrameAnalysis(PiYUVAnalysis):
                     display = np.copy(np.abs(self.analysis.diff*30) if self.showDiff else self.slots[0].mean)
                     if self.analysis.valid:
                         log.info(f'Valid change detected at {self.analysis.rect.center}')
+                        if self.logThreshRange:
+                            minThresh, maxThresh = self.analysis.validThreshRange()
+                            log.info(f'Threshold can be {minThresh}...{maxThresh}')
                         # add detection to mark consideration
                         self.detected.append(self.analysis.rect.center)
                     else:
@@ -261,10 +255,11 @@ class FrameAnalysis(PiYUVAnalysis):
 
 class Slot:
     '''
-    Stores multiple frames in an array for averaging
+    Averages multiple frames
     '''
     def __init__(self):
-        self.frames = []
+        self.nFrames = 0
+        self.sum = None
         self._mean = None
     
 
@@ -274,24 +269,29 @@ class Slot:
 
         :param frame: (h, w) array (int16 grayscale matrix)
         '''
-        self.frames.append(frame)
+        if self.nFrames <= 0:
+            self.sum = frame
+        else:
+            self.sum += frame
+        
+        self.nFrames += 1
     
 
     @property
     def length(self):
         '''
-        :returns: current number of stored frames
+        :returns: current number of accumulated frames
         '''
-        return len(self.frames)
+        return self.nFrames
     
 
     @property
     def mean(self):
         '''
-        :returns: average value of each pixel over all frames
+        :returns: average value of each pixel over accumulated frames
         '''
         if self._mean is None:
-            self._mean = np.mean(self.frames, axis=0, dtype=np.int16)
+            self._mean = self.sum/self.nFrames
         
         return self._mean
 
@@ -423,6 +423,7 @@ class Analysis:
         :param thresh: threshold (0...255) to detect changes between averaged slot frames
         :param maxSize: maximum width/height of difference detection area in pixel
         '''
+        self.valid = False
         self.thresh = thresh
         self.maxSize = maxSize
 
@@ -431,46 +432,24 @@ class Analysis:
 
         diff = newFrame-oldFrame
         self.analyzeDiff(diff)
-
-        # check for too much movement and try to solve by tracking
+        
         if self.result == 'too much change':
-            # describe feature matrix bounds
-            dims = oldSlot.mean.shape
-            size = 30 # feature width and height
-            pos = (dims[1]//2, dims[0]//2-size) # feature center position
-            featureBounds = Rect(pos[0]-size//2, pos[0]+size//2, pos[1]-size//2, pos[1]+size//2)
-            
-            # track (camera pitch vibrations in the first place)
-            searchV = 15 # +/- search range in vertical direction
-            searchH = 5 # +/- search range in horizontal direction
-            log.debug('Tracking movement')
-            matchBounds = self.track(newFrame, oldFrame, featureBounds, (searchH, searchV)) # track
-            shift = (matchBounds.center[0]-featureBounds.center[0], matchBounds.center[1]-featureBounds.center[1])
-            log.info(f'Movement between slots: {shift}')
-
-            # correct by moving old in direction of tracking
-            log.debug('Correcting and analyzing again')
-            oldRolled = np.roll(oldFrame, shift[::-1], (0, 1))
-            diff = np.abs(newFrame-oldRolled) # compare old with new
-            xBorder, yBorder = abs(shift[0]), abs(shift[1])
-            # zero write rolled areas
-            diff[:yBorder, :] = 0 # top border
-            diff[:, :xBorder] = 0 # left border
-            diff[diff.shape[0]-yBorder:, :] = 0 # bottom border
-            diff[:, diff.shape[1]-xBorder:] = 0 # right border
-
-            self.analyzeDiff(diff)
+            # check for too much movement and try to resolve
+            self.analyzeDiff(diff, sigma=4)
     
 
-    def analyzeDiff(self, diff):
+    def analyzeDiff(self, diff, sigma=2):
         '''
         Analyzes the difference between 2 frames
+
+        :param diff: (h, w) array (int16 grayscale matrix)
+        :param sigma: sigma of gaussian blur on diff for spatial noise reduction
         '''
         self.valid = False
         self.result = ''
 
-        self.diff = ndimage.gaussian_filter(diff, 2) # to eliminate outliers
-        self.mask = self.diff < -self.thresh
+        self.diff = ndimage.gaussian_filter(diff, sigma) # to eliminate outliers
+        self.mask = self.diff <= -self.thresh
         iMask = np.argwhere(self.mask )
         nChange = len(iMask)
         if nChange > 0:
@@ -483,7 +462,7 @@ class Analysis:
             self.rect = Rect(xMin, xMax, yMin, yMax)
             log.debug(f'Change width: {self.rect.width}, height: {self.rect.height}')
             # check valid size
-            if self.rect.width < self.maxSize and self.rect.height < self.maxSize:
+            if self.rect.width <= self.maxSize and self.rect.height <= self.maxSize:
                 self.valid = True
                 self.result = 'valid change'
             else:
@@ -493,36 +472,17 @@ class Analysis:
             self.result = 'no change'
     
 
-    def track(self, searchFrame, baseFrame, featureBounds, searchRadius=(10, 10)):
+    def validThreshRange(self):
         '''
-        Tries to find movement between frames
-
-        :param searchFrame/baseFrame: (h, w) array (int16 grayscale matrix)
-        :param featureBounds: Rect object describing the bounds in baseFrame 
-            of the feature matrix to search in searchFrame
-        :param searchRadius: +/- x and y ranges to search
-        :returns: rect object of the estimated match of featureBounds in searchFrame
+        :returns: (min, max) of valid thresholds for last analysis
         '''
-        # get crop from old frame
-        base = featureBounds.crop(baseFrame)
+        if not self.valid:
+            raise ValueError('Last analyzeDiff did not yield a valid change')
 
-        # search
-        bestBounds = featureBounds
-        bestMatch = 1e6
-        xRange = range(-searchRadius[0], searchRadius[0])
-        yRange = range(-searchRadius[1], searchRadius[1])
-        for yMove in yRange:
-            for xMove in xRange:
-                # get crop of frame to search in
-                movedBounds = featureBounds.moved(xMove, yMove)
-                lookup = movedBounds.crop(searchFrame)
-                # metric for match
-                match = np.sum(np.abs(lookup-base))
-                if match < bestMatch:
-                    bestMatch = match
-                    bestBounds = movedBounds
+        maxThresh = -np.min(self.diff[self.mask])
+        minThresh = -np.min(self.diff[~self.mask])+1
         
-        return bestBounds
+        return (minThresh, maxThresh)
     
 
     def __repr__(self):
