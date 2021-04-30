@@ -134,7 +134,7 @@ class FrameAnalysis(PiYUVAnalysis):
                     
                     # analyse for differences between newest and oldest slot
                     log.debug('Comparing newest to oldest slot')
-                    self.analysis = Analysis(self.slots[0], self.slots[-1], self.thresh, maxSize=self.maxHoleSize)
+                    self.analysis = Analysis(self.slots[0].mean, self.slots[-1].mean, self.thresh, maxSize=self.maxHoleSize)
                     display = np.copy(np.abs(self.analysis.diff*30) if self.showDiff else self.slots[0].mean)
                     if self.analysis.valid:
                         log.info(f'Valid change detected at {self.analysis.rect.center}')
@@ -287,7 +287,7 @@ class Slot:
         :returns: average value of each pixel over accumulated frames
         '''
         if self._mean is None:
-            self._mean = self.sum/self.nFrames
+            self._mean = self.sum//self.nFrames
         
         return self._mean
 
@@ -413,9 +413,9 @@ class Analysis:
     '''
     Analysis between slots
     '''
-    def __init__(self, newSlot, oldSlot, thresh, minSize=3, maxSize=100, maxSquareErr=0.2):
+    def __init__(self, newFrame, oldFrame, thresh, minSize=3, maxSize=100, maxSquareErr=0.2):
         '''
-        :param newSlot/oldSlot: Slots objects
+        :param newFrame/oldFrame: new/old frames (h, w) array (int16 grayscale matrix)
         :param thresh: threshold (0...255) to detect changes between averaged slot frames
         :param minSize: minimum width/height of change mask
         :param maxSize: maximum width/height of change mask
@@ -426,9 +426,6 @@ class Analysis:
         self.minSize = minSize
         self.maxSize = maxSize
         self.maxSquareErr = maxSquareErr
-
-        newFrame = newSlot.mean
-        oldFrame = oldSlot.mean
 
         diff = newFrame-oldFrame
         self.diff = ndimage.gaussian_filter(diff, 2) # to eliminate outliers
