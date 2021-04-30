@@ -426,22 +426,39 @@ class Analysis:
         self.minSize = minSize
         self.maxSize = maxSize
         self.maxSquareErr = maxSquareErr
-
-        diff = newFrame-oldFrame
-        self.diff = ndimage.gaussian_filter(diff, 2) # to eliminate outliers
+        
+        self.diff = np.maximum(oldFrame-newFrame, 0)
+        self.diff = ndimage.gaussian_filter(self.diff, 2) # to eliminate outliers
+        #self.diff = self.convMaxCFAR(self.diff)
         self.analyzeDiff()
         
         self.tries = 0
         while (self.result == 'too much change'):
             self.tries += 1
             # check for too much movement and try to resolve
-            self.thresh += 2
+            self.thresh += 1
             log.info(f'Increasing threshold to {self.thresh}')
             self.analyzeDiff()
         
-        if self.tries > 0 and self.valid:
-            minThresh, _ = self.validThreshRange()
-            self.result = f'Suggested threshold: {int(minThresh)+1}'
+        if self.valid:
+            minThresh, maxThresh = self.validThreshRange()
+            log.info(f'Valid threshold range: {minThresh}...{maxThresh}')
+            if self.tries > 0:
+                self.result = f'Suggested threshold: {int(minThresh)+1}'
+    
+
+    def convMaxCFAR(self, diff, nGuard=8, nNoise=2):
+        '''
+        Normalized a grayscale matrix based on 2D-CFAR-like algorithm
+        '''
+        # build footprint mask
+        size = 2*(nGuard+nNoise)+1
+        mask = np.ones((size, size), dtype=bool)
+        mask[nNoise:-nNoise, nNoise:-nNoise] = False
+        # apply footprint
+        filtered = ndimage.maximum_filter(diff, footprint=mask)
+        
+        return diff-filtered
     
 
     def analyzeDiff(self):
@@ -451,7 +468,8 @@ class Analysis:
         self.valid = False
         self.result = ''
         
-        self.mask = self.diff <= -self.thresh
+        self.mask = self.diff >= self.thresh
+        # analyze threshold mask
         iMask = np.argwhere(self.mask )
         nChange = len(iMask)
         log.debug(f'{nChange} pixels changed')
@@ -462,10 +480,10 @@ class Analysis:
             y = iMask[:, 0]
             yMin, yMax = np.min(y), np.max(y)
             self.rect = Rect(xMin, xMax, yMin, yMax)
-            log.info(f'Change width: {self.rect.width}, height: {self.rect.height}')
+            log.debug(f'Change width: {self.rect.width}, height: {self.rect.height}')
             # check valid size
             ratioErr = abs(1.-self.rect.width/(self.rect.height+1e-6)) # we expect something near square
-            log.info(f'ratioErr: {ratioErr:.2f}')
+            log.debug(f'ratioErr: {ratioErr:.2f}')
             if self.minSize <= self.rect.width <= self.maxSize and self.minSize <= self.rect.height <= self.maxSize and ratioErr < self.maxSquareErr:
                 self.valid = True
                 self.result = 'valid change'
@@ -483,8 +501,8 @@ class Analysis:
         if not self.valid:
             raise ValueError('Last analyzeDiff did not yield a valid change')
 
-        maxThresh = -np.min(self.diff[self.mask])
-        minThresh = -np.min(self.diff[~self.mask])
+        maxThresh = np.max(self.diff[self.mask])
+        minThresh = np.max(self.diff[~self.mask])
         
         return (minThresh, maxThresh)
     
