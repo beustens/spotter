@@ -137,11 +137,16 @@ class FrameAnalysis(PiYUVAnalysis):
                     self.analysis = Analysis(self.slots[0].mean, self.slots[-1].mean, self.thresh, maxSize=self.maxHoleSize)
                     display = np.copy(np.abs(self.analysis.diff*30) if self.showDiff else self.slots[0].mean)
                     if self.analysis.valid:
-                        log.info(f'Valid change detected at {self.analysis.rect.center}')
-                        # add detection to mark consideration
-                        self.detected.append(self.analysis.rect.center)
+                        holePoint = self.analysis.rect.center
+                        # check if detected hole is not already there
+                        if self.isDoubleMark(holePoint):
+                            log.warning(f'{holePoint} is probably a duplicate and will not be marked')
+                        else:
+                            # add detection to mark consideration
+                            log.info(f'Valid change detected at {holePoint}')
+                            self.detected.append(holePoint)
                     else:
-                        # add mark of detection
+                        # add mark for detection
                         if self.detected:
                             log.debug('Adding change detection mark')
                             self.marks.append(self.detected[0])
@@ -152,6 +157,21 @@ class FrameAnalysis(PiYUVAnalysis):
                     self.makeStreamImage(display)
         
         self.procTime = time.perf_counter()-startTime
+    
+
+    def isDoubleMark(self, mark, tolerance=3):
+        '''
+        Checks if mark is already close to other marks
+
+        :param mark: (x, y) center of mark
+        :param tolerance: x/y max distance tolerance to other mark to count as double
+        :returns: True if mark is already there or False if unique
+        '''
+        for otherMark in self.marks:
+            if abs(mark[0]-otherMark[0]) <= tolerance and abs(mark[1]-otherMark[1]) <= tolerance:
+                return True
+        
+        return False
     
     
     def findMirror(self, frame):
@@ -413,7 +433,7 @@ class Analysis:
     '''
     Analysis between slots
     '''
-    def __init__(self, newFrame, oldFrame, thresh, minSize=3, maxSize=100, maxSquareErr=0.2):
+    def __init__(self, newFrame, oldFrame, thresh, minSize=2, maxSize=20, maxSquareErr=0.2):
         '''
         :param newFrame/oldFrame: new/old frames (h, w) array (int16 grayscale matrix)
         :param thresh: threshold (0...255) to detect changes between averaged slot frames
@@ -427,16 +447,17 @@ class Analysis:
         self.maxSize = maxSize
         self.maxSquareErr = maxSquareErr
         
-        self.diff = np.maximum(oldFrame-newFrame, 0)
-        self.diff = ndimage.gaussian_filter(self.diff, 2) # to eliminate outliers
-        #self.diff = self.convMaxCFAR(self.diff)
+        self.diff = oldFrame-newFrame
+        self.diff = ndimage.gaussian_filter(self.diff, 1) # to eliminate outliers
+        self.diff = self.circMaxCFAR(self.diff)
+        self.diff = np.maximum(self.diff, 0)
         self.analyzeDiff()
         
         self.tries = 0
         while (self.result == 'too much change'):
             self.tries += 1
             # check for too much movement and try to resolve
-            self.thresh += 1
+            self.thresh += 2
             log.info(f'Increasing threshold to {self.thresh}')
             self.analyzeDiff()
         
@@ -447,17 +468,25 @@ class Analysis:
                 self.result = f'Suggested threshold: {int(minThresh)+1}'
     
 
-    def convMaxCFAR(self, diff, nGuard=8, nNoise=2):
+    def circMaxCFAR(self, diff, nGuard=5, nNoise=2):
         '''
-        Normalized a grayscale matrix based on 2D-CFAR-like algorithm
+        Tries to highlight spots
+
+        :param nGuard: radius in pixels of spot
+        :param nNoise: width in pixels of ring where to collect noise beyond spot
+        :returns: diff-filtered
         '''
-        # build footprint mask
+        # build circular footprint mask
         size = 2*(nGuard+nNoise)+1
-        mask = np.ones((size, size), dtype=bool)
-        mask[nNoise:-nNoise, nNoise:-nNoise] = False
+        mask = np.zeros((size, size), dtype=bool)
+        v = np.arange(size)-size//2
+        xx, yy = np.meshgrid(v, v)
+        dist2 = xx**2+yy**2
+        mask[dist2 > nGuard**2] = True
+        mask[dist2 > (nGuard+nNoise)**2] = False
         # apply footprint
         filtered = ndimage.maximum_filter(diff, footprint=mask)
-        
+    
         return diff-filtered
     
 
